@@ -1,0 +1,80 @@
+{
+  "$schema": "./_schema.json",
+  "ordre": 1,
+  "titre": "Atelier Brun",
+  "tags": [
+    "E-commerce"
+  ],
+  "annee": "2026",
+  "description": "Une boutique en ligne sur mesure pour un atelier artisanal : fiches produit soignées, paiement simple et gestion des stocks au quotidien.",
+  "teinte": "#4a3a2c",
+  "image": "hero.jpg",
+  "video": "hero.mp4",
+  "lien": "#",
+  "visuels": [
+    {
+      "src": "/medias/maison-ocre/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Page d'accueil"
+    },
+    {
+      "src": "/medias/cafe-noisette/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Fiche produit"
+    },
+    {
+      "src": "/medias/studio-lin/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "L'atelier"
+    },
+    {
+      "src": "hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Commande et livraison"
+    }
+  ],
+  "identite": {
+    "texte": "Un monogramme marqué comme au fer sur le cuir, des tons de tannerie et deux typographies : une pour la clarté, une pour la main.",
+    "logo": {
+      "monogramme": "AB",
+      "nom": "Atelier Brun",
+      "fond": "#a8542a",
+      "encre": "#f1e7d6"
+    },
+    "couleurs": [
+      {
+        "nom": "Tanin",
+        "hex": "#22170f"
+      },
+      {
+        "nom": "Cognac",
+        "hex": "#a8542a"
+      },
+      {
+        "nom": "Fil de lin",
+        "hex": "#d8b67a"
+      },
+      {
+        "nom": "Croûte",
+        "hex": "#ece0cc"
+      }
+    ],
+    "typos": [
+      {
+        "nom": "Chillax",
+        "famille": "var(--font-sans)",
+        "usage": "Titres, interface",
+        "fond": "#22170f",
+        "encre": "#f1e7d6"
+      },
+      {
+        "nom": "Instrument Serif",
+        "famille": "var(--font-serif)",
+        "usage": "Noms des pièces, accents",
+        "serif": true,
+        "fond": "#d8b67a",
+        "encre": "#22170f"
+      }
+    ]
+  }
+}

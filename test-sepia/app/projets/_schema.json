@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Projet Sepia",
+  "description": "Fiche d'un projet du portfolio. Le nom du fichier donne l'adresse : atelier-brun.json → /projets/atelier-brun. Les médias (images, vidéos) se mettent dans public/medias/<nom-du-fichier>/ et s'écrivent ici avec leur seul nom (ex. \"hero.jpg\").",
+  "type": "object",
+  "required": ["titre", "tags", "annee", "description", "teinte", "image"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "ordre": {
+      "type": "number",
+      "description": "Position dans la liste (accueil, menu, projet suivant) : plus petit = avant. Sans ordre, le projet passe après les autres."
+    },
+    "titre": { "type": "string", "minLength": 1, "description": "Nom du projet." },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Savoir-faire, ex. [\"Identité\", \"Site vitrine\"]. Affichés sous le titre."
+    },
+    "annee": { "type": "string", "pattern": "^[0-9]{4}$", "description": "Année, ex. \"2026\"." },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Ce qu'est le projet, en deux ou trois phrases (intro de la page)."
+    },
+    "teinte": {
+      "$ref": "#/definitions/couleur",
+      "description": "Couleur proche de la dominante de l'image, affichée le temps qu'elle charge. Ex. \"#a8542a\"."
+    },
+    "image": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Visuel principal, paysage ~1920 px (ex. \"hero.jpg\") : accueil, hero, menu, fin de page."
+    },
+    "video": {
+      "type": "string",
+      "description": "Facultatif. Vidéo muette en boucle à la place de l'image (ex. \"hero.mp4\") ; ouvrable en plein écran."
+    },
+    "lien": {
+      "type": "string",
+      "description": "Facultatif. Adresse du site réalisé : bouton « Voir le site ». Ex. \"https://exemple.ch\"."
+    },
+    "visuels": {
+      "type": "array",
+      "description": "Facultatif. Couloir de visuels (3 à 6 conseillés), tous recadrés en paysage 16:10.",
+      "items": {
+        "type": "object",
+        "required": ["src"],
+        "additionalProperties": false,
+        "properties": {
+          "src": { "type": "string", "minLength": 1, "description": "Image ~1600 px de large (ex. \"visuel-1.jpg\")." },
+          "alt": { "type": "string", "description": "Description pour les lecteurs d'écran (vide si purement décorative)." },
+          "video": { "type": "string", "description": "Facultatif. Vidéo muette en boucle à la place de l'image." },
+          "titre": { "type": "string", "description": "Petit titre affiché sous les points quand le visuel est devant nous." }
+        }
+      }
+    },
+    "identite": {
+      "type": "object",
+      "description": "Facultatif. Planche d'identité : logo, palette en mire, typographies.",
+      "required": ["logo", "couleurs", "typos"],
+      "additionalProperties": false,
+      "properties": {
+        "texte": { "type": "string", "description": "Phrase courte à côté du titre « Identité »." },
+        "logo": {
+          "type": "object",
+          "required": ["monogramme", "nom", "fond", "encre"],
+          "additionalProperties": false,
+          "properties": {
+            "monogramme": { "type": "string", "description": "Initiales affichées en grand, ex. \"AB\"." },
+            "nom": { "type": "string", "description": "Nom sous le monogramme." },
+            "fond": { "$ref": "#/definitions/couleur", "description": "Couleur de la case." },
+            "encre": { "$ref": "#/definitions/couleur", "description": "Couleur du texte." }
+          }
+        },
+        "couleurs": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Palette : une barre de la mire par couleur (4 conseillées).",
+          "items": {
+            "type": "object",
+            "required": ["nom", "hex"],
+            "additionalProperties": false,
+            "properties": {
+              "nom": { "type": "string" },
+              "hex": { "$ref": "#/definitions/couleur" }
+            }
+          }
+        },
+        "typos": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Typographies (2 conseillées).",
+          "items": {
+            "type": "object",
+            "required": ["nom", "famille", "usage", "fond", "encre"],
+            "additionalProperties": false,
+            "properties": {
+              "nom": { "type": "string", "description": "Nom affiché, ex. \"Chillax\"." },
+              "famille": {
+                "type": "string",
+                "description": "Police CSS : \"var(--font-sans)\" (Chillax), \"var(--font-serif)\" (Instrument Serif) ou une famille chargée sur le site."
+              },
+              "usage": { "type": "string", "description": "Ex. \"Titres, interface\"." },
+              "serif": { "type": "boolean", "description": "true pour une police serif (italique, graisse normale)." },
+              "fond": { "$ref": "#/definitions/couleur" },
+              "encre": { "$ref": "#/definitions/couleur" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "couleur": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+  }
+}

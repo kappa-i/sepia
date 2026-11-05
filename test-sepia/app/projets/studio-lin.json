@@ -1,0 +1,79 @@
+{
+  "$schema": "./_schema.json",
+  "ordre": 4,
+  "titre": "Studio Lin",
+  "tags": [
+    "Site vitrine"
+  ],
+  "annee": "2025",
+  "description": "Un site épuré pour un studio d’architecture, où les projets respirent : grandes images, typographie discrète et navigation sans friction.",
+  "teinte": "#d8cbb3",
+  "image": "hero.jpg",
+  "lien": "#",
+  "visuels": [
+    {
+      "src": "hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Liste des projets"
+    },
+    {
+      "src": "/medias/maison-ocre/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Fiche d'un projet"
+    },
+    {
+      "src": "/medias/cafe-noisette/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Le studio"
+    },
+    {
+      "src": "/medias/atelier-brun/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Contact et accès"
+    }
+  ],
+  "identite": {
+    "texte": "Une identité qui s'efface derrière l'architecture : un monogramme fin, des gris de béton et une seule touche de lin.",
+    "logo": {
+      "monogramme": "SL",
+      "nom": "Studio Lin",
+      "fond": "#8c8a84",
+      "encre": "#f4f2ee"
+    },
+    "couleurs": [
+      {
+        "nom": "Graphite",
+        "hex": "#1e1e1c"
+      },
+      {
+        "nom": "Béton",
+        "hex": "#8c8a84"
+      },
+      {
+        "nom": "Lin",
+        "hex": "#d8cbb3"
+      },
+      {
+        "nom": "Papier",
+        "hex": "#f4f2ee"
+      }
+    ],
+    "typos": [
+      {
+        "nom": "Chillax",
+        "famille": "var(--font-sans)",
+        "usage": "Titres, plans, interface",
+        "fond": "#1e1e1c",
+        "encre": "#f4f2ee"
+      },
+      {
+        "nom": "Instrument Serif",
+        "famille": "var(--font-serif)",
+        "usage": "Noms des projets",
+        "serif": true,
+        "fond": "#d8cbb3",
+        "encre": "#1e1e1c"
+      }
+    ]
+  }
+}
