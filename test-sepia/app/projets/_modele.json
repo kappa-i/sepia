@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "ordre": 99,
+  "titre": "Nom du projet",
+  "tags": [
+    "Identité",
+    "Site vitrine"
+  ],
+  "annee": "2026",
+  "description": "Ce qu’est le projet en deux ou trois phrases : pour qui, ce qu’on a fait, ce qui le rend particulier.",
+  "teinte": "#8a6a4a",
+  "image": "hero.jpg",
+  "video": "hero.mp4",
+  "lien": "https://exemple.ch",
+  "visuels": [
+    {
+      "src": "visuel-1.jpg",
+      "alt": "Page d’accueil du site",
+      "titre": "Page d’accueil"
+    },
+    {
+      "src": "visuel-2.jpg",
+      "alt": "Version mobile",
+      "titre": "Sur mobile"
+    },
+    {
+      "src": "visuel-3.jpg",
+      "alt": "",
+      "titre": "Détail"
+    }
+  ],
+  "identite": {
+    "texte": "Une phrase sur les choix graphiques.",
+    "logo": {
+      "monogramme": "NP",
+      "nom": "Nom du projet",
+      "fond": "#8a6a4a",
+      "encre": "#f4ede3"
+    },
+    "couleurs": [
+      {
+        "nom": "Sombre",
+        "hex": "#1f1a15"
+      },
+      {
+        "nom": "Principale",
+        "hex": "#8a6a4a"
+      },
+      {
+        "nom": "Secondaire",
+        "hex": "#d9c3a0"
+      },
+      {
+        "nom": "Fond",
+        "hex": "#f4ede3"
+      }
+    ],
+    "typos": [
+      {
+        "nom": "Chillax",
+        "famille": "var(--font-sans)",
+        "usage": "Titres, interface",
+        "fond": "#1f1a15",
+        "encre": "#f4ede3"
+      },
+      {
+        "nom": "Instrument Serif",
+        "famille": "var(--font-serif)",
+        "usage": "Accents",
+        "serif": true,
+        "fond": "#d9c3a0",
+        "encre": "#1f1a15"
+      }
+    ]
+  }
+}

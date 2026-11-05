@@ -1,0 +1,80 @@
+{
+  "$schema": "./_schema.json",
+  "ordre": 1,
+  "titre": "Maison Ocre",
+  "tags": [
+    "Identité",
+    "Site vitrine"
+  ],
+  "annee": "2026",
+  "description": "Une identité chaleureuse et un site vitrine qui met en scène les pièces de la maison, pensé pour donner envie de pousser la porte de la boutique.",
+  "teinte": "#c8955a",
+  "image": "hero.jpg",
+  "lien": "#",
+  "visuels": [
+    {
+      "src": "hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Page d'accueil"
+    },
+    {
+      "src": "/medias/studio-lin/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Les pièces de la maison"
+    },
+    {
+      "src": "/medias/cafe-noisette/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Carnet d'inspirations"
+    },
+    {
+      "src": "/medias/atelier-brun/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Venir à la boutique"
+    }
+  ],
+  "identite": {
+    "texte": "Des terres cuites, de la chaux et du lin : une identité qui sent la maison, avec un monogramme dessiné comme un sceau.",
+    "logo": {
+      "monogramme": "MO",
+      "nom": "Maison Ocre",
+      "fond": "#c8955a",
+      "encre": "#2a1a10"
+    },
+    "couleurs": [
+      {
+        "nom": "Terre",
+        "hex": "#5a3420"
+      },
+      {
+        "nom": "Ocre",
+        "hex": "#c8955a"
+      },
+      {
+        "nom": "Chaux",
+        "hex": "#efe6d8"
+      },
+      {
+        "nom": "Olive",
+        "hex": "#7d7a52"
+      }
+    ],
+    "typos": [
+      {
+        "nom": "Instrument Serif",
+        "famille": "var(--font-serif)",
+        "usage": "Titres, noms des pièces",
+        "serif": true,
+        "fond": "#5a3420",
+        "encre": "#efe6d8"
+      },
+      {
+        "nom": "Chillax",
+        "famille": "var(--font-sans)",
+        "usage": "Textes, interface",
+        "fond": "#efe6d8",
+        "encre": "#5a3420"
+      }
+    ]
+  }
+}

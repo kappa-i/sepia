@@ -32,6 +32,12 @@
 
 html {
   -webkit-font-smoothing: antialiased;
+  /* Barre de défilement masquée (le défilement reste possible) : Firefox… */
+  scrollbar-width: none;
+}
+/* … et Chrome, Safari, Edge */
+::-webkit-scrollbar {
+  display: none;
 }
 
 body {

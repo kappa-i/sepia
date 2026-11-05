@@ -22,6 +22,9 @@ const ouverture = ref(false)
 const index = useState('projetIndex', () => 0)
 // Position de la vidéo au moment d'ouvrir un projet (reprise sur la page projet)
 const videoTemps = useState<number>('videoTemps', () => 0)
+// Image de la vidéo au moment d'ouvrir un projet (data URL), servie d'affiche à la page projet
+const instantane = useState<string | null>('videoInstantane', () => null)
+
 const courant = computed(() => props.items[index.value]!)
 // Couleur moyenne de chaque visuel : l'écran « éclaire » la pièce avec (façon halo de télé)
 const couleurs = ref<string[]>([])
@@ -535,8 +538,6 @@ function ouvrir() {
   etat.tmx = 0
   etat.tmy = 0
   const pret = precharger(p.image)
-  // La page projet reprend la vidéo là où elle en est ici : pas de saut à l'arrivée
-  videoTemps.value = textures[index.value]?.video?.currentTime ?? 0
 
   const r = frame.value.getBoundingClientRect()
   const W = window.innerWidth
@@ -549,7 +550,17 @@ function ouvrir() {
   redimensionner()
 
   $gsap
-    .timeline({ onComplete: () => pret.then(() => navigateTo(dest)) })
+    .timeline({
+      onComplete: () =>
+        pret.then(() => {
+          // Au moment exact du départ : la page projet reprend la vidéo à cet instant,
+          // et affiche cette image le temps que sa propre vidéo soit prête (pas de saut)
+          const v = textures[index.value]?.video
+          videoTemps.value = v?.currentTime ?? 0
+          instantane.value = v ? capturerVideo(v) : null
+          navigateTo(dest)
+        }),
+    })
     .to('.screen .titre, .screen .rail, .screen .reflet', { opacity: 0, duration: 0.3 }, 0)
     .to(etat, { rx: 0, ry: 0, rw: 1, rh: 1, duration: 1, ease: 'power4.inOut' }, 0.1)
     .to(etat, { bulge: 0, fx: 0, mx: 0, my: 0, duration: 1, ease: 'power3.inOut' }, 0.1)

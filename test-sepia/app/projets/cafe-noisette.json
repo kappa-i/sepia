@@ -1,0 +1,80 @@
+{
+  "$schema": "./_schema.json",
+  "ordre": 3,
+  "titre": "Café Noisette",
+  "tags": [
+    "Identité",
+    "Site vitrine"
+  ],
+  "annee": "2025",
+  "description": "Logo, palette et site vitrine pour un torréfacteur de quartier, avec la carte, les horaires et la réservation en deux clics.",
+  "teinte": "#a67b5b",
+  "image": "hero.jpg",
+  "lien": "#",
+  "visuels": [
+    {
+      "src": "hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "La carte"
+    },
+    {
+      "src": "/medias/atelier-brun/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Réserver une table"
+    },
+    {
+      "src": "/medias/maison-ocre/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Les origines du café"
+    },
+    {
+      "src": "/medias/studio-lin/hero.jpg",
+      "alt": "Visuel provisoire",
+      "titre": "Sachets et étiquettes"
+    }
+  ],
+  "identite": {
+    "texte": "Une noisette pour logo, les bruns de la torréfaction et un vert d'enseigne de quartier : chaleureux sans être rétro.",
+    "logo": {
+      "monogramme": "CN",
+      "nom": "Café Noisette",
+      "fond": "#3b2416",
+      "encre": "#f3e3c9"
+    },
+    "couleurs": [
+      {
+        "nom": "Torréfié",
+        "hex": "#3b2416"
+      },
+      {
+        "nom": "Noisette",
+        "hex": "#a67b5b"
+      },
+      {
+        "nom": "Crème",
+        "hex": "#f3e3c9"
+      },
+      {
+        "nom": "Enseigne",
+        "hex": "#2f5b4a"
+      }
+    ],
+    "typos": [
+      {
+        "nom": "Chillax",
+        "famille": "var(--font-sans)",
+        "usage": "Titres, carte, interface",
+        "fond": "#2f5b4a",
+        "encre": "#f3e3c9"
+      },
+      {
+        "nom": "Instrument Serif",
+        "famille": "var(--font-serif)",
+        "usage": "Noms des cafés, ardoises",
+        "serif": true,
+        "fond": "#f3e3c9",
+        "encre": "#3b2416"
+      }
+    ]
+  }
+}

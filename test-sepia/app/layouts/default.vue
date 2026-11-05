@@ -14,6 +14,33 @@ const metiers = ['sites web', 'identité visuelle', 'design & web']
 // Menu « écran télé » (voir SiteMenu)
 const menuOuvert = useState('menuOuvert', () => false)
 
+// Header superposé : textes clairs tant qu'il est posé sur une zone sombre (image du hero,
+// section sombre… marquées `data-header-clair`), comme sur l'accueil ; sombres sinon
+const header = ref<HTMLElement>()
+const surImage = ref(true)
+// Header superposé encore posé sur le hero : l'accroche (« Agence de design & web · Lausanne »)
+// n'est affichée qu'à ce moment-là, elle disparaît une fois le hero dépassé
+const surHero = ref(true)
+function majSurImage() {
+  const milieu = (header.value?.offsetHeight ?? 0) / 2
+  surImage.value = [...document.querySelectorAll('main [data-header-clair]')].some((el) => {
+    const r = el.getBoundingClientRect()
+    return r.top <= milieu && r.bottom > milieu
+  })
+  const hero = document.querySelector('main .hero')
+  surHero.value = !hero || hero.getBoundingClientRect().bottom > milieu
+}
+watch(() => route.fullPath, () => nextTick(majSurImage))
+onMounted(() => {
+  majSurImage()
+  addEventListener('scroll', majSurImage, { passive: true })
+  addEventListener('resize', majSurImage)
+})
+onBeforeUnmount(() => {
+  removeEventListener('scroll', majSurImage)
+  removeEventListener('resize', majSurImage)
+})
+
 useHead({
   htmlAttrs: {
     class: computed(() => [fullscreen.value && 'no-scroll', menuOuvert.value && 'menu-ouvert'].filter(Boolean).join(' ')),
@@ -73,11 +100,11 @@ onMounted(() => {
       </div>
     </div>
 
-    <header class="header grid" :class="{ overlay }">
+    <header ref="header" class="header grid" :class="{ overlay, 'sur-image': overlay && (surImage || menuOuvert) }">
       <div class="marque">
         <NuxtLink to="/" class="logo">Sepia<sup>©</sup></NuxtLink>
         <!-- Apparaît en glissant vers le haut une fois l'intro terminée -->
-        <p class="tagline label" :class="{ visible: introDone }">
+        <p class="tagline label" :class="{ visible: introDone && (!overlay || surHero) }">
           <span class="tagline-mot">{{ accroche }}</span>
           <span v-if="ville" class="tagline-mot">· {{ ville }}</span>
         </p>
@@ -109,7 +136,7 @@ onMounted(() => {
       </nav>
     </div>
 
-    <footer v-if="!fullscreen" class="footer" :inert="menuOuvert">
+    <footer v-if="!fullscreen && !route.meta.sansFooter" class="footer" :inert="menuOuvert">
       <NuxtLink to="/contact" class="footer-cta">
         Un projet<span class="serif"> en tête&nbsp;?</span>
       </NuxtLink>
@@ -179,10 +206,19 @@ onMounted(() => {
 .avec-menu .header {
   z-index: 60;
 }
+/* Header superposé (page projet) : comme sur l'accueil, pas de mélange « difference » */
 .header.overlay {
   position: fixed;
   left: 0;
   right: 0;
+  /* La page projet (feuille posée avec une marge) décale le header du bord via --decalage-header */
+  padding: calc(var(--gutter) + var(--decalage-header, 0px)) calc(var(--gutter) + var(--decalage-header, 0px)) var(--gutter);
+  mix-blend-mode: normal;
+  color: var(--fg);
+  transition: color 0.4s var(--ease);
+}
+.header.overlay.sur-image {
+  color: var(--bg);
 }
 
 .loader {
