@@ -1,13 +1,27 @@
 {
   "$schema": "./_schema.json",
   "ordre": 99,
+  "accueil": false,
   "titre": "Nom du projet",
   "tags": [
     "Identité",
     "Site vitrine"
   ],
   "annee": "2026",
+  "date": "2026-03",
   "description": "Ce qu’est le projet en deux ou trois phrases : pour qui, ce qu’on a fait, ce qui le rend particulier.",
+  "fiche": {
+    "client": "Nom du client",
+    "secteur": "Secteur",
+    "role": [
+      "Identité",
+      "Site vitrine"
+    ]
+  },
+  "recit": {
+    "defi": "Ce qui coinçait pour le client, en deux ou trois phrases.",
+    "reponse": "Ce qu’on a proposé, et pourquoi ça répond au défi."
+  },
   "teinte": "#8a6a4a",
   "image": "hero.jpg",
   "video": "hero.mp4",
@@ -72,5 +86,10 @@
         "encre": "#1f1a15"
       }
     ]
+  },
+  "temoignage": {
+    "citation": "Ce que le client dit du projet et du travail avec nous.",
+    "auteur": "Prénom Nom",
+    "role": "Fonction, entreprise"
   }
 }

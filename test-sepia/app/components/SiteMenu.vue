@@ -15,20 +15,25 @@ const ecran = ref<HTMLElement>()
 const contenu = ref<HTMLElement>()
 const neige = ref<HTMLCanvasElement>()
 // Fin de fermeture : voile noir percé d'une étoile, à travers laquelle on voit l'écran
-const trou = ref<SVGSVGElement>()
-const etoilePath = ref<SVGPathElement>()
+const voile = ref<{ el?: SVGSVGElement; etoile?: SVGPathElement }>()
 const visible = ref(false)
 
-// Lien survolé (id d'un des liens ci-dessous)
-const chaine = ref('projets')
+// Lien mis en avant (id d'un des liens ci-dessous) : celui survolé, sinon celui de la page
+// où l'on est. Aucun sur l'accueil, qui n'est pas dans la liste : rien n'est mis en avant
+const chaine = ref<string | null>(null)
 const liens = [
-  { id: 'projets', num: '01', nom: 'Projets', to: '/', info: `(${projets.length})` },
+  { id: 'projets', num: '01', nom: 'Projets', to: '/projets', info: `(${projets.length})` },
   { id: 'services', num: '02', nom: 'Services', to: '/services', info: '' },
-  { id: 'studio', num: '03', nom: 'Studio', to: '/studio', info: '' },
+  { id: 'apropos', num: '03', nom: 'À propos', to: '/a-propos', info: '' },
   { id: 'contact', num: '04', nom: 'Contact', to: '/contact', info: '' },
 ]
-// Visuel en fond : le projet affiché sur l'accueil pour « Projets », de la neige pour « Contact »
-const imageFond = computed(() => (chaine.value === 'projets' ? projets[projetIndex.value]?.image : undefined))
+// Lien de la page en cours (null sur l'accueil)
+const chaineDeLaPage = () => liens.find((l) => route.path.startsWith(l.to))?.id ?? null
+// Visuel en fond : le projet affiché sur l'écran de l'accueil (pour « Projets », et sur
+// l'accueil tant que rien n'est survolé), de la neige pour « Contact »
+const imageFond = computed(() =>
+  chaine.value === 'projets' || chaine.value === null ? projetsAccueil[projetIndex.value]?.image : undefined,
+)
 
 let reduit = false
 
@@ -58,7 +63,7 @@ function niveauRepos() {
   return chaine.value === 'contact' ? 0.32 : 0.07
 }
 
-function zapper(id: string) {
+function zapper(id: string | null) {
   if (id === chaine.value) return
   chaine.value = id
   if (reduit) {
@@ -69,10 +74,16 @@ function zapper(id: string) {
   $gsap.fromTo(bruit, { niveau: 0.85 }, { niveau: niveauRepos(), duration: 0.35, ease: 'power2.out' })
 }
 
+/** Focus d'un lien : mis en avant seulement au clavier. À l'ouverture, le menu place le focus
+ * sur le premier lien (accessibilité) : à la souris, ça ne doit pas le mettre en avant */
+function auFocus(e: FocusEvent, id: string) {
+  if ((e.target as HTMLElement).matches(':focus-visible')) zapper(id)
+}
+
 // ——— Allumage / extinction ———
 function allumer() {
   visible.value = true
-  chaine.value = liens.find((l) => l.to !== '/' && route.path.startsWith(l.to))?.id ?? 'projets'
+  chaine.value = chaineDeLaPage()
   nextTick(() => {
     const c = neige.value
     if (c && !ctx) {
@@ -93,10 +104,11 @@ function allumer() {
     const items = contenu.value!.querySelectorAll('.apparait')
     $gsap.killTweensOf([root.value, ecran.value, bruit, items])
     // Réouverture pendant une fermeture : on remet l'écran et le fond noir
-    $gsap.killTweensOf([trou.value, forme])
+    $gsap.killTweensOf(voile.value?.el ?? [])
+    extinction?.kill()
     $gsap.set(ecran.value!, { opacity: 1 })
-    $gsap.set(trou.value!, { opacity: 0 })
-    $gsap.set(root.value!, { backgroundColor: '#050505' })
+    $gsap.set(voile.value!.el!, { opacity: 0 })
+    $gsap.set(root.value!, { backgroundColor: 'var(--nuit)' })
     $gsap
       .timeline()
       .fromTo(root.value!, { opacity: 0 }, { opacity: 1, duration: 0.12 })
@@ -119,53 +131,22 @@ function allumer() {
   })
 }
 
-// Taille de l'étoile percée dans le voile noir (demi-largeur, demi-hauteur, agrandissement)
-const forme = { sx: 0, sy: 0, k: 1 }
-function majEtoile() {
-  const W = window.innerWidth
-  const H = window.innerHeight
-  etoilePath.value?.setAttribute(
-    'transform',
-    `translate(${W / 2} ${H / 2}) scale(${forme.sx * forme.k} ${forme.sy * forme.k})`,
-  )
-}
-
+let extinction: ReturnType<typeof eteindreTele> | undefined
 function eteindre() {
   const fin = () => {
     visible.value = false
     cancelAnimationFrame(raf)
   }
-  if (reduit || !root.value) {
+  const trou = voile.value?.el
+  const etoile = voile.value?.etoile
+  if (reduit || !root.value || !ecran.value || !trou || !etoile) {
     if (root.value) $gsap.to(root.value, { opacity: 0, duration: 0.2, onComplete: fin })
     else fin()
     return
   }
-  const W = window.innerWidth
-  const H = window.innerHeight
-  // Au départ, l'étoile a exactement la taille de la ligne de l'écran écrasé
-  Object.assign(forme, { sx: (W - 12) / 2, sy: 2, k: 1 })
-  majEtoile()
-  $gsap.killTweensOf([root.value, ecran.value, bruit, trou.value, forme])
-  $gsap
-    .timeline({
-      onComplete: () => {
-        $gsap.set(trou.value!, { opacity: 0 })
-        fin()
-      },
-    })
-    .to(bruit, { niveau: 0.6, duration: 0.1 })
-    // L'image s'écrase en une ligne blanche sur le fond noir…
-    .to(ecran.value!, { scaleY: 0.004, filter: 'brightness(5)', duration: 0.25, ease: 'power3.in' }, 0)
-    // …la ligne devient une étoile découpée dans le noir, à travers laquelle on voit encore l'écran
-    .set(ecran.value!, { scaleY: 1, filter: 'brightness(2)' }, 0.25)
-    .set(trou.value!, { opacity: 1 }, 0.25)
-    // Elle se resserre et ses pointes verticales poussent : une étoile allongée…
-    .to(forme, { sx: W * 0.12, duration: 0.3, ease: 'power3.inOut', onUpdate: majEtoile }, 0.25)
-    .to(forme, { sy: H * 0.06, duration: 0.2, ease: 'power2.out', onUpdate: majEtoile }, 0.28)
-    // …qui se referme en un point : c'est la dernière chose qui s'éteint
-    .to(forme, { k: 0, duration: 0.28, ease: 'power3.in', onUpdate: majEtoile }, 0.5)
-    // Puis le noir s'efface et la page réapparaît
-    .to(root.value, { opacity: 0, duration: 0.25, ease: 'power2.out' }, 0.82)
+  $gsap.killTweensOf(bruit)
+  extinction = eteindreTele($gsap, { root: root.value, ecran: ecran.value, trou, etoile }, fin)
+  extinction.to(bruit, { niveau: 0.6, duration: 0.1 }, 0)
 }
 
 watch(ouvert, (o) => (o ? allumer() : eteindre()))
@@ -207,7 +188,7 @@ onBeforeUnmount(() => {
       <!-- Image de la chaîne en cours -->
       <div class="fond" aria-hidden="true">
         <img
-          v-for="p in projets"
+          v-for="p in projetsAccueil"
           :key="p.slug"
           :src="p.image"
           alt=""
@@ -221,14 +202,15 @@ onBeforeUnmount(() => {
 
       <div ref="contenu" class="contenu">
         <nav class="chaines" aria-label="Menu principal">
-          <ul class="principal">
+          <!-- La souris quitte la liste : on revient à la page en cours (rien sur l'accueil) -->
+          <ul class="principal" @pointerleave="zapper(chaineDeLaPage())">
             <li v-for="l in liens" :key="l.id" class="apparait">
               <NuxtLink
                 :to="l.to"
                 class="lien"
                 :class="{ actif: chaine === l.id }"
                 @pointerenter="zapper(l.id)"
-                @focus="zapper(l.id)"
+                @focus="auFocus($event, l.id)"
                 @click="choisir"
               >
                 <span class="num label">{{ l.num }}</span>
@@ -256,34 +238,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Fin de fermeture : voile noir percé d'une étoile allongée qui se referme -->
-    <svg ref="trou" class="trou" aria-hidden="true">
-      <defs>
-        <!-- Étoile à 4 branches aux côtés creusés, de -1 à 1 : mise à l'échelle en JS -->
-        <path
-          id="menu-etoile"
-          ref="etoilePath"
-          d="M-1 0 Q-0.12 -0.12 0 -1 Q0.12 -0.12 1 0 Q0.12 0.12 0 1 Q-0.12 0.12 -1 0 Z"
-        />
-        <!-- Bord flou de l'ouverture, en px (appliqué hors de la mise à l'échelle) -->
-        <filter id="menu-trou-flou" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="2.5" />
-        </filter>
-        <!-- Halo de phosphore autour de l'étoile -->
-        <filter id="menu-trou-halo" x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="14" />
-        </filter>
-        <mask id="menu-trou-masque" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
-          <rect width="100%" height="100%" fill="#fff" />
-          <g filter="url(#menu-trou-flou)">
-            <use href="#menu-etoile" fill="#000" />
-          </g>
-        </mask>
-      </defs>
-      <rect width="100%" height="100%" fill="#050505" mask="url(#menu-trou-masque)" />
-      <g filter="url(#menu-trou-halo)" opacity="0.35" style="mix-blend-mode: screen">
-        <use href="#menu-etoile" fill="#edeae2" />
-      </g>
-    </svg>
+    <TeleTrou ref="voile" />
   </div>
 </template>
 
@@ -292,7 +247,7 @@ onBeforeUnmount(() => {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: #050505;
+  background: var(--nuit);
   color: var(--bg);
 }
 /* L'écran : légèrement en retrait, coins arrondis comme un tube */
@@ -374,6 +329,11 @@ ul {
   padding: 0;
   list-style: none;
 }
+/* Liste à la largeur des liens : la quitter (et revenir à la page en cours) se fait dès
+   qu'on s'éloigne des mots, pas seulement au bord de l'écran */
+.principal {
+  align-self: flex-start;
+}
 .num {
   color: rgba(237, 234, 226, 0.4);
   font-variant-numeric: tabular-nums;
@@ -391,7 +351,7 @@ ul {
   min-width: 2.4em;
 }
 .nom {
-  /* Limité aussi par la hauteur : les 4 liens doivent tenir dans l'écran */
+  /* Limité aussi par la hauteur : les liens doivent tenir dans l'écran */
   font-size: clamp(44px, min(9vw, 13vh), 180px);
   font-weight: 500;
   letter-spacing: -0.045em;
@@ -444,14 +404,6 @@ ul {
   .bloc-droite {
     align-items: flex-start;
   }
-}
-.trou {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

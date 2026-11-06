@@ -1,15 +1,20 @@
 /* Design tokens — inspiré d'auge-xp.com : fond papier, encre noire, un seul accent */
 :root {
-  --bg: #edeae2;
+  --bg: #d2c9be;
   --fg: #111;
   --muted: #6b6459;
-  --accent: #c8955a; /* sépia */
+  --accent: #805f3b; /* sépia */
   --line: rgba(17, 17, 17, 0.15);
+  /* Fond de la « pièce » de l'accueil autour de l'écran (test : plus clair que --fg, #111) */
+  --fond-accueil: #8c8378;
+  /* Le « noir » de la pièce (intro, menu, extinction) : brun sépia très foncé */
+  --nuit: #1f1610;
 
   --font-sans: 'Chillax', system-ui, sans-serif;
   --font-serif: 'Instrument Serif', Georgia, serif;
 
-  --gutter: max(20px, 2.08vw);
+  /* Marge des bords de page (logo, contenu, footer) */
+  --gutter: max(24px, 3vw);
   --gap: max(10px, 1.04vw);
 
   --text-xs: max(11px, 0.83vw);
@@ -113,13 +118,20 @@ img {
   left: 0;
   right: 0;
   bottom: -0.1em;
-  height: 1px;
+  /* 1 px sur les petits textes, un peu plus épais sur les grands (adresse, « Un projet en tête ») */
+  height: max(1px, 0.05em);
   background: currentColor;
   transform: scaleX(0);
   transform-origin: right;
   transition: transform 0.5s var(--ease);
 }
+/* Survol de tous les liens texte du site (celui du menu) : un trait se trace de gauche à
+   droite et repart vers la droite. Sur le lien lui-même (.link) ou sur un texte .link
+   placé dans un lien plus large (flèche, compteur à côté) */
 .link:hover::after,
+.link:focus-visible::after,
+a:hover .link::after,
+a:focus-visible .link::after,
 .link.router-link-exact-active:not([href*="#"])::after {
   transform: scaleX(1);
   transform-origin: left;

@@ -6,9 +6,9 @@
  * Au clic, l'écran s'aplatit et s'agrandit jusqu'au plein écran, puis on ouvre
  * la page du projet (qui commence par la même image plein écran).
  */
-import type { Projet } from '~/utils/projets'
+import type { Ecran } from '~/utils/projets'
 
-const props = withDefaults(defineProps<{ items: Projet[]; interval?: number }>(), { interval: 0 })
+const props = withDefaults(defineProps<{ items: Ecran[]; interval?: number }>(), { interval: 0 })
 
 const { $gsap } = useNuxtApp()
 const canvas = ref<HTMLCanvasElement>()
@@ -24,14 +24,32 @@ const index = useState('projetIndex', () => 0)
 const videoTemps = useState<number>('videoTemps', () => 0)
 // Image de la vidéo au moment d'ouvrir un projet (data URL), servie d'affiche à la page projet
 const instantane = useState<string | null>('videoInstantane', () => null)
+// Page à ouvrir derrière l'extinction de télé (écran neige, voir TeleExtinction)
+const extinctionVers = useState<string | null>('extinctionVers', () => null)
 
 const courant = computed(() => props.items[index.value]!)
 // Couleur moyenne de chaque visuel : l'écran « éclaire » la pièce avec (façon halo de télé)
 const couleurs = ref<string[]>([])
-const lueur = computed(() => couleurs.value[index.value] ?? courant.value.teinte)
+const lueur = computed(() =>
+  phase.value === 'intro' ? LUEUR_NEIGE : (couleurs.value[index.value] ?? courant.value.teinte),
+)
+const ligne = computed(() => courant.value.accroche ?? `${courant.value.tags?.join(' · ') ?? ''} — ${courant.value.annee ?? ''}`)
+/** Niveau de neige au repos sur l'écran n (1 = rien que de la neige) */
+const neigeDe = (n: number) => (props.items[n]?.neige ? 1 : 0)
 // Sens du dernier changement (1 = suivant, -1 = précédent) : oriente les animations du texte
 const sens = ref(1)
 const introDone = useState('introDone', () => false)
+// Voile noir posé par le layout au premier chargement : retiré ici une fois l'écran éteint en place
+const voile = useState('introVoile', () => true)
+// Intro (première arrivée sur le site) : la télé s'allume dans le noir, grésille pendant le
+// chargement, puis « capte » le premier projet. 'pret' = fonctionnement normal.
+const phase = ref<'intro' | 'pret'>(introDone.value ? 'pret' : 'intro')
+// Métiers qui passent sur la neige pendant l'intro (le dernier rejoint l'accroche du header)
+const metiers = ['sites web', 'identité visuelle', 'design & web']
+// Pièce plongée dans le noir avant l'allumage
+const nuit = ref<HTMLElement>()
+// Lueur froide de la neige, avant que la première image arrive
+const LUEUR_NEIGE = '#8f9bab'
 // Rail de traits collés au bord droit de l'écran : ils épousent sa courbure (même formule
 // que le shader) et la suivent en direct quand l'écran se bombe ou bouge avec la souris
 const traits = ref<SVGPathElement[]>([])
@@ -144,7 +162,7 @@ void main() {
 }`
 
 /** Visuel de repli quand un projet n'a pas encore d'image */
-function placeholder(p: Projet): HTMLCanvasElement {
+function placeholder(p: Ecran): HTMLCanvasElement {
   const c = document.createElement('canvas')
   c.width = 1600
   c.height = 900
@@ -188,7 +206,17 @@ function couleurMoyenne(src: TexImageSource): string | undefined {
   }
 }
 
-function chargerImage(p: Projet): Promise<Source> {
+function chargerImage(p: Ecran): Promise<Source> {
+  // Écran neige : simple fond sombre, entièrement recouvert par la neige du shader
+  if (p.neige) {
+    const c = document.createElement('canvas')
+    c.width = 16
+    c.height = 10
+    const g = c.getContext('2d')!
+    g.fillStyle = '#111'
+    g.fillRect(0, 0, 16, 10)
+    return Promise.resolve({ src: c, w: 16, h: 10 })
+  }
   const repli = () => {
     const c = placeholder(p)
     return { src: c, w: c.width, h: c.height }
@@ -203,9 +231,12 @@ function chargerImage(p: Projet): Promise<Source> {
 }
 
 /** Vidéo muette en boucle ; sa texture est remise à jour à chaque image (voir dessiner) */
-function chargerSource(p: Projet): Promise<Source> {
+function chargerSource(p: Ecran): Promise<Source> {
   if (!p.video || reduit) return chargerImage(p)
   return new Promise((resolve) => {
+    // Vidéo trop longue à arriver (réseau lent, lecture bloquée) : on prend l'image,
+    // pour que l'intro n'attende pas indéfiniment sur la neige
+    const repli = setTimeout(() => resolve(chargerImage(p)), 5000)
     const v = document.createElement('video')
     v.muted = true
     v.loop = true
@@ -213,10 +244,14 @@ function chargerSource(p: Projet): Promise<Source> {
     v.preload = 'auto'
     v.crossOrigin = 'anonymous'
     v.addEventListener('loadeddata', () => {
+      clearTimeout(repli)
       v.play().catch(() => {})
       resolve({ src: v, w: v.videoWidth, h: v.videoHeight, video: v })
     }, { once: true })
-    v.addEventListener('error', () => resolve(chargerImage(p)), { once: true })
+    v.addEventListener('error', () => {
+      clearTimeout(repli)
+      resolve(chargerImage(p))
+    }, { once: true })
     v.src = p.video!
   })
 }
@@ -224,8 +259,13 @@ function chargerSource(p: Projet): Promise<Source> {
 
 let gl: WebGLRenderingContext | null = null
 let textures: { tex: WebGLTexture; w: number; h: number; video?: HTMLVideoElement }[] = []
+// Texture noire affichée (sous la neige) tant que les visuels ne sont pas chargés
+let noir: (typeof textures)[number] | undefined
+// Résolue quand les visuels sont chargés et l'écran prêt à les montrer
+let signalerPret: () => void = () => {}
+const chargement = new Promise<void>((ok) => (signalerPret = ok))
 let u: Record<string, WebGLUniformLocation | null> = {}
-const etat = { mix: 0, noise: 0, bulge: 0.4, fx: 1, rx: 0, ry: 0, rw: 1, rh: 1, mx: 0, my: 0, tmx: 0, tmy: 0 }
+const etat = { mix: 0, noise: 1, bulge: 0.4, fx: 1, rx: 0, ry: 0, rw: 1, rh: 1, mx: 0, my: 0, tmx: 0, tmy: 0 }
 let from = 0
 let to = 0
 let raf = 0
@@ -268,6 +308,14 @@ async function init() {
   gl.uniform1i(u.uB!, 1)
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
 
+  // L'écran tourne tout de suite (neige sur fond noir) : l'allumage n'attend pas le chargement
+  const t = gl.createTexture()!
+  gl.bindTexture(gl.TEXTURE_2D, t)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([17, 17, 17, 255]))
+  noir = { tex: t, w: 1, h: 1 }
+  redimensionner()
+  boucle()
+
   await document.fonts?.ready
   const sources = await Promise.all(props.items.map(chargerSource))
   if (!gl) return
@@ -281,12 +329,35 @@ async function init() {
     return { tex, w, h, video }
   })
 
-  couleurs.value = props.items.map((p, i) => couleurMoyenne(sources[i]!.src) ?? p.teinte)
+  // Écran neige : la pièce s'éclaire de sa teinte (lueur froide de télé), pas de sa texture noire
+  couleurs.value = props.items.map((p, i) => (p.neige ? p.teinte : (couleurMoyenne(sources[i]!.src) ?? p.teinte)))
 
   from = to = Math.min(index.value, textures.length - 1)
-  redimensionner()
-  boucle()
-  planifier()
+  signalerPret()
+}
+
+/**
+ * L'écran capte la chaîne : la neige se dissipe sur le projet courant (fin de l'intro,
+ * ou retour sur l'accueil depuis une autre page, le temps que les visuels arrivent).
+ */
+function capter() {
+  phase.value = 'pret'
+  introDone.value = true
+  try {
+    sessionStorage.setItem('sepia-intro', '1')
+  } catch {}
+  if (reduit) {
+    etat.noise = neigeDe(to)
+    planifier()
+    return
+  }
+  $gsap
+    .timeline({ onComplete: planifier })
+    .to(etat, { bulge: 0.7, duration: 0.3, ease: 'power2.inOut' }, 0)
+    .to(etat, { noise: neigeDe(to), duration: 0.7, ease: 'power2.in' }, 0.1)
+    .to(etat, { bulge: 0.4, duration: 0.9, ease: 'power3.out' }, 0.35)
+    .to('.screen .rail', { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out' }, 0.4)
+    .to('.screen .reflet', { opacity: 0.35, duration: 1, ease: 'power2.out' }, 0.3)
 }
 
 function redimensionner() {
@@ -316,7 +387,9 @@ function redimensionner() {
 function refleter() {
   const el = canvas.value
   const r = reflet.value
-  if (!el || !r || !refletCtx || ouverture.value || !el.clientHeight) return
+  // Canvas pas encore dimensionné (écran monté avant que la page ait sa taille, en revenant
+  // d'une autre page) : rien à recopier, le ResizeObserver redimensionnera dès que possible
+  if (!el || !r || !refletCtx || ouverture.value || !el.clientHeight || !el.width || !el.height || !r.width) return
   // Hauteur de la bande d'écran reflétée, à la même échelle que le reflet
   const srcH = Math.min(el.height, el.height * (r.clientHeight / el.clientHeight))
   refletCtx.setTransform(1, 0, 0, -1, 0, r.height)
@@ -331,9 +404,10 @@ function majVideo(t: (typeof textures)[number]) {
 }
 
 function dessiner() {
-  if (!gl || !textures.length) return
-  const A = textures[from]!
-  const B = textures[to]!
+  if (!gl) return
+  const A = textures[from] ?? noir
+  const B = textures[to] ?? noir
+  if (!A || !B) return
   gl.activeTexture(gl.TEXTURE0)
   gl.bindTexture(gl.TEXTURE_2D, A.tex)
   majVideo(A)
@@ -350,13 +424,16 @@ function dessiner() {
   gl.uniform2f(u.uImgB!, B.w, B.h)
   gl.uniform1f(u.uFx!, etat.fx)
   gl.uniform1f(u.uNoise!, etat.noise)
-  gl.uniform1f(u.uTime!, (performance.now() / 1000) % 100)
+  // Mouvement réduit : la neige et le scintillement restent figés
+  gl.uniform1f(u.uTime!, reduit ? 1 : (performance.now() / 1000) % 100)
   gl.clearColor(0, 0, 0, 0)
   gl.clear(gl.COLOR_BUFFER_BIT)
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
 
 function boucle() {
+  // Image suivante demandée d'abord : une erreur ponctuelle ne fige plus l'écran pour de bon
+  raf = requestAnimationFrame(boucle)
   etat.mx += (etat.tmx - etat.mx) * 0.08
   etat.my += (etat.tmy - etat.my) * 0.08
   if (visible) {
@@ -365,7 +442,6 @@ function boucle() {
     majTraits()
     parallaxeTitre()
   }
-  raf = requestAnimationFrame(boucle)
 }
 
 /**
@@ -389,7 +465,7 @@ function parallaxeTitre() {
 }
 
 function aller(cible: number) {
-  if (enTransition || ouverture.value || !textures.length) return
+  if (enTransition || ouverture.value || !textures.length || phase.value === 'intro') return
   const n = props.items.length
   const suivant = ((cible % n) + n) % n
   if (suivant === index.value) return
@@ -404,6 +480,7 @@ function aller(cible: number) {
   if (reduit) {
     from = to
     etat.mix = 0
+    etat.noise = neigeDe(to)
     planifier()
     return
   }
@@ -423,7 +500,8 @@ function aller(cible: number) {
     .to(etat, { noise: 1, duration: 0.15, ease: 'power2.out' }, 0)
     .to(etat, { bulge: 0.7, duration: 0.35, ease: 'power2.inOut' }, 0)
     .to(etat, { mix: 1, duration: 0.4, ease: 'power2.inOut' }, 0.15)
-    .to(etat, { noise: 0, duration: 0.5, ease: 'power2.in' }, 0.5)
+    // Vers un écran neige, elle reste
+    .to(etat, { noise: neigeDe(to), duration: 0.5, ease: 'power2.in' }, 0.5)
     .to(etat, { bulge: 0.4, duration: 0.8, ease: 'power3.out' }, 0.45)
 }
 
@@ -528,16 +606,19 @@ function precharger(src?: string): Promise<void> {
  * (uRect) s'agrandit dans le shader : rien n'est recalculé côté mise en page.
  */
 function ouvrir() {
-  if (enTransition || ouverture.value) return
+  if (enTransition || ouverture.value || phase.value === 'intro') return
   const p = courant.value
-  const dest = `/projets/${p.slug}`
+  const dest = p.vers ?? `/projets/${p.slug}`
   if (reduit || !textures.length || !frame.value || !stage.value) return navigateTo(dest)
 
   ouverture.value = true
   clearTimeout(timer)
   etat.tmx = 0
   etat.tmy = 0
-  const pret = precharger(p.image)
+  // Écran neige : il grandit jusqu'au plein écran en grésillant, puis la télé s'éteint
+  // comme à la fermeture du menu (TeleExtinction, qui survit au changement de page)
+  const neige = !!p.neige
+  const pret = neige ? Promise.resolve() : precharger(p.image)
 
   const r = frame.value.getBoundingClientRect()
   const W = window.innerWidth
@@ -552,7 +633,7 @@ function ouvrir() {
   $gsap
     .timeline({
       onComplete: () =>
-        pret.then(() => {
+        neige ? (extinctionVers.value = dest) : pret.then(() => {
           // Au moment exact du départ : la page projet reprend la vidéo à cet instant,
           // et affiche cette image le temps que sa propre vidéo soit prête (pas de saut)
           const v = textures[index.value]?.video
@@ -563,7 +644,7 @@ function ouvrir() {
     })
     .to('.screen .titre, .screen .rail, .screen .reflet', { opacity: 0, duration: 0.3 }, 0)
     .to(etat, { rx: 0, ry: 0, rw: 1, rh: 1, duration: 1, ease: 'power4.inOut' }, 0.1)
-    .to(etat, { bulge: 0, fx: 0, mx: 0, my: 0, duration: 1, ease: 'power3.inOut' }, 0.1)
+    .to(etat, { bulge: 0, fx: neige ? 1 : 0, mx: 0, my: 0, duration: 1, ease: 'power3.inOut' }, 0.1)
 }
 
 // Molette / trackpad : un projet par geste. Le verrou ne se lève qu'après
@@ -633,26 +714,77 @@ onMounted(() => {
   deplacerCurseur(index.value, false)
   majTraits()
 
-  // Entrée du texte autour de l'écran, une fois le loader terminé
-  if (!reduit) {
-    $gsap.set('.screen .rail', { opacity: 0, x: 14 })
-    const stop = watch(
-      introDone,
-      (ok) => {
-        if (!ok) return
-        $gsap.to('.screen .rail', {
-          opacity: 1,
-          x: 0,
-          duration: 0.8,
-          ease: 'power3.out',
-          delay: 0.2,
-        })
-        queueMicrotask(() => stop())
-      },
-      { immediate: true },
-    )
+  // Retour sur l'accueil depuis une autre page : pas d'intro, juste la neige le temps du chargement
+  if (introDone.value) {
+    chargement.then(capter)
+    return
   }
+  voile.value = false
+  if (reduit) {
+    chargement.then(capter)
+    return
+  }
+  allumer()
 })
+
+/**
+ * Intro : noir complet, un point s'allume, s'étire en ligne puis s'ouvre sur tout l'écran,
+ * qui grésille ; la pièce s'éclaire. Le logo et les métiers passent sur la neige. Dès que
+ * les visuels sont chargés (et pas avant la fin de l'allumage), l'écran capte le premier projet.
+ * Déjà vue dans la session : l'allumage démarre plus tôt (les métiers passent toujours).
+ */
+function allumer() {
+  let dejaVue = false
+  try {
+    dejaVue = sessionStorage.getItem('sepia-intro') === '1'
+  } catch {}
+  const boite = document.querySelector<HTMLElement>('.screen .intro-metier')!
+  const mots = $gsap.utils.toArray<HTMLElement>('.screen .intro-mot')
+  // Le CSS les cache déjà (translateY) : on repasse en yPercent pour GSAP
+  $gsap.set(mots, { y: 0, yPercent: 110 })
+  const st = stage.value!
+  // Le logo est déjà là (affiché par le CSS dès le premier rendu) : la télé s'allume derrière lui.
+  // Départ : un point au centre de l'écran. Ces valeurs reprennent en ligne ce que le CSS
+  // de .en-intro cache déjà avant que le JS n'arrive.
+  $gsap.set(st, { scaleX: 6 / st.clientWidth, scaleY: 6 / st.clientHeight, opacity: 0, filter: 'brightness(5)' })
+  $gsap.set(nuit.value!, { opacity: 1 })
+  $gsap.set('.screen .rail', { opacity: 0, x: 14 })
+  $gsap.set('.screen .reflet', { opacity: 0 })
+  $gsap.set('.screen .intro-ligne', { opacity: 0, y: 10 })
+
+  // Laisse au logo le temps d'arriver (animation CSS de ~0,9 s) s'il vient de s'afficher
+  const debut = dejaVue ? 0.2 : 0.5
+  const tl = $gsap
+    .timeline()
+    // Un point s'allume derrière le logo et devient une ligne…
+    .to(st, { opacity: 1, duration: 0.06 }, debut)
+    .to(st, { scaleX: 1, scaleY: 0.004, duration: 0.3, ease: 'power2.out' }, debut + 0.04)
+    // …qui s'ouvre sur toute la hauteur
+    .to(st, { scaleY: 1, duration: 0.5, ease: 'expo.out' }, '>')
+    .to(st, { filter: 'brightness(1)', duration: 0.6, ease: 'power2.out' }, '<')
+    // La lumière de l'écran gagne la pièce, lentement. Tween à part (hors de la timeline) :
+    // ce fondu ne retarde pas l'arrivée du premier projet
+    .call(() => {
+      $gsap.to(nuit.value!, { opacity: 0, duration: 2.6, ease: 'power1.inOut' })
+    }, [], '<')
+    // « Agence de » arrive sous le logo, et les métiers avec lui
+    .to('.screen .intro-ligne', { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, '<0.15')
+  // Les métiers défilent dans le même emplacement, comme dans le loader d'origine : chaque mot
+  // monte dans son masque, et la largeur de la case suit le mot pour que « Agence de … »
+  // reste centré. Le premier arrive avec le logo ; ~2,5 s en tout jusqu'au premier projet.
+  tl.set(boite, { width: () => mots[0]!.offsetWidth }, '<')
+  mots.forEach((mot, i) => {
+    tl.fromTo(mot, { yPercent: 110 }, { yPercent: 0, duration: 0.35, ease: 'power3.out' }, i ? '>-0.15' : '<0.2')
+    if (i) tl.to(boite, { width: () => mot.offsetWidth, duration: 0.35, ease: 'power3.inOut' }, '<')
+    if (i < mots.length - 1) tl.to(mot, { yPercent: -110, duration: 0.3, ease: 'power3.in' }, '>0.2')
+  })
+  tl.to({}, { duration: 0.5 })
+  const fin = new Promise<void>((ok) => tl.eventCallback('onComplete', () => ok()))
+  Promise.all([chargement, fin]).then(() => {
+    $gsap.set(st, { clearProps: 'transform,filter,opacity' })
+    capter()
+  })
+}
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
@@ -676,12 +808,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="screen" :style="{ '--lueur': lueur }">
+  <div class="screen" :class="{ 'en-intro': phase === 'intro' }" :style="{ '--lueur': lueur }">
     <!-- Ambiance autour de l'écran : halo coloré, grain et coins assombris -->
     <div class="ambiance" aria-hidden="true">
       <div class="halo" />
       <div class="grain" />
     </div>
+    <!-- Pièce dans le noir avant que la télé s'allume (intro) -->
+    <div ref="nuit" class="nuit" aria-hidden="true" />
     <div ref="frame" class="frame">
       <div ref="stage" class="stage">
         <canvas
@@ -689,7 +823,7 @@ onBeforeUnmount(() => {
           class="canvas"
           role="link"
           tabindex="0"
-          :aria-label="`Voir le projet ${courant.titre}`"
+          :aria-label="courant.vers ? courant.titre : `Voir le projet ${courant.titre}`"
           @pointermove="surMouvement"
           @pointerleave="surSortie"
           @click="ouvrir"
@@ -700,9 +834,19 @@ onBeforeUnmount(() => {
       <canvas ref="reflet" class="reflet" aria-hidden="true" />
       <!-- Titre du projet centré sur l'image -->
       <Transition :name="sens > 0 ? 'titre-suiv' : 'titre-prec'" mode="out-in">
-        <div :key="courant.titre" class="titre">
+        <!-- Intro : le logo et les métiers sur la neige, avant le premier projet -->
+        <div v-if="phase === 'intro'" key="__intro" class="titre titre-intro">
+          <h3><span class="intro-logo">Sepia<sup>©</sup></span></h3>
+          <span class="label tags intro-ligne">
+            Agence de
+            <span class="intro-metier">
+              <span v-for="m in metiers" :key="m" class="intro-mot serif">{{ m }}</span>
+            </span>
+          </span>
+        </div>
+        <div v-else :key="courant.titre" class="titre">
           <h3>{{ courant.titre }}</h3>
-          <span class="label tags">{{ courant.tags.join(' · ') }} — {{ courant.annee }}</span>
+          <span class="label tags">{{ ligne }}</span>
         </div>
       </Transition>
 
@@ -714,7 +858,7 @@ onBeforeUnmount(() => {
             :key="p.slug"
             :ref="(el) => (traits[i] = el as SVGPathElement)"
             class="trait"
-            :class="{ survol: survol === i }"
+            :class="{ survol: survol === i, neige: p.neige }"
           />
           <path ref="traitActif" class="trait actif" />
         </svg>
@@ -743,7 +887,7 @@ onBeforeUnmount(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--fg);
+  background: var(--fond-accueil);
   color: var(--bg);
   /* Le header est superposé (transparent) : on lui garde sa place en haut */
   padding: var(--header-h) var(--gutter) var(--gutter);
@@ -781,6 +925,36 @@ onBeforeUnmount(() => {
   opacity: 0.07;
   animation: grain 0.8s steps(4) infinite;
 }
+.nuit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--nuit);
+  opacity: 0;
+  pointer-events: none;
+}
+/* Intro, dès le rendu serveur (avant le JS) : pièce noire, écran éteint, seul le logo est là */
+.en-intro .nuit {
+  opacity: 1;
+}
+.en-intro .stage,
+.en-intro .rail,
+.en-intro .reflet,
+.en-intro .intro-ligne {
+  opacity: 0;
+}
+/* Le logo monte et apparaît tout de suite, sans attendre le JS */
+.intro-logo {
+  display: inline-block;
+  animation: logo-arrive 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+@keyframes logo-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(0.25em);
+    filter: blur(6px);
+  }
+}
 .ambiance::after {
   content: '';
   position: absolute;
@@ -803,6 +977,8 @@ onBeforeUnmount(() => {
 }
 .frame {
   position: relative;
+  /* Au-dessus de la pièce plongée dans le noir (.nuit) */
+  z-index: 2;
   flex: 1;
   min-height: 0;
   /* Place sous l'écran pour le reflet */
@@ -811,7 +987,17 @@ onBeforeUnmount(() => {
   margin-inline: 8vw;
 }
 @media (max-width: 760px) {
+  /* Téléphone : écran moins haut (il ne remplit plus toute la hauteur), centré entre le header
+     et la ligne du bas, à la même distance des deux (hauteurs mesurées par le layout) */
+  .screen {
+    padding-top: var(--h-header, var(--header-h));
+    padding-bottom: var(--h-bas, var(--gutter));
+  }
   .frame {
+    flex: none;
+    height: min(72svh, 155vw);
+    max-height: 100%;
+    margin-block: auto;
     margin-inline: 0;
   }
 }
@@ -897,6 +1083,9 @@ onBeforeUnmount(() => {
 .trait.survol {
   stroke: rgba(237, 234, 226, 0.7);
 }
+.trait.neige {
+  stroke-dasharray: 2 4;
+}
 .trait.actif {
   stroke: var(--bg);
   stroke-width: 3;
@@ -936,6 +1125,43 @@ onBeforeUnmount(() => {
   transform: translate(0, -50%);
 }
 
+
+/* Intro : « Agence de » + le métier en cours, qui change en glissant */
+/* Le logo et sa ligne un peu au-dessus du centre de l'écran */
+.titre-intro {
+  padding-bottom: 9vh;
+}
+.titre-intro sup {
+  font-size: 0.35em;
+  vertical-align: super;
+}
+.intro-ligne {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  margin-top: 0.4em;
+  text-transform: none;
+  font-size: var(--text-md);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+.intro-metier {
+  display: grid;
+  justify-items: start;
+  overflow: hidden;
+}
+/* Tous les métiers dans la même case, un seul visible à la fois (cachés dès le rendu serveur) */
+.intro-mot {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  transform: translateY(110%);
+}
+/* Mouvement réduit : pas de défilement, le dernier métier est affiché */
+@media (prefers-reduced-motion: reduce) {
+  .intro-mot:last-child {
+    transform: none;
+  }
+}
 
 /* Titre : glisse dans le sens du défilement, avec un flou de signal */
 .titre-suiv-enter-active,

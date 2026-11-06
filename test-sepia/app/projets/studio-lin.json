@@ -1,35 +1,43 @@
 {
   "$schema": "./_schema.json",
   "ordre": 4,
+  "accueil": true,
   "titre": "Studio Lin",
   "tags": [
     "Site vitrine"
   ],
   "annee": "2025",
+  "date": "2025-06",
   "description": "Un site épuré pour un studio d’architecture, où les projets respirent : grandes images, typographie discrète et navigation sans friction.",
-  "teinte": "#d8cbb3",
+  "fiche": {
+    "client": "Studio Lin",
+    "secteur": "Architecture d’intérieur",
+    "role": [
+      "Site vitrine"
+    ]
+  },
+  "recit": {
+    "defi": "Le studio présentait ses réalisations dans un PDF envoyé sur demande. Les clients potentiels ne trouvaient rien en cherchant son nom.",
+    "reponse": "Un site vitrine épuré, construit autour des photos des projets, rapide à charger et facile à mettre à jour par l’équipe à chaque nouveau chantier."
+  },
+  "teinte": "#b7b7b8",
   "image": "hero.jpg",
   "lien": "#",
   "visuels": [
     {
-      "src": "hero.jpg",
-      "alt": "Visuel provisoire",
+      "src": "visuel-1.jpg",
+      "alt": "Pièce blanche et lumineuse",
       "titre": "Liste des projets"
     },
     {
-      "src": "/medias/maison-ocre/hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Fiche d'un projet"
+      "src": "visuel-2.jpg",
+      "alt": "Cuisine bleue et blanche",
+      "titre": "Fiche d’un projet"
     },
     {
-      "src": "/medias/cafe-noisette/hero.jpg",
-      "alt": "Visuel provisoire",
+      "src": "visuel-3.jpg",
+      "alt": "Couloir en béton",
       "titre": "Le studio"
-    },
-    {
-      "src": "/medias/atelier-brun/hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Contact et accès"
     }
   ],
   "identite": {
@@ -75,5 +83,10 @@
         "encre": "#1e1e1c"
       }
     ]
+  },
+  "temoignage": {
+    "citation": "Les demandes de devis arrivent maintenant par le site, avec des projets déjà bien cadrés.",
+    "auteur": "Léa Fontaine",
+    "role": "Directrice, Studio Lin"
   }
 }

@@ -15,9 +15,36 @@ const instantane = useState<string | null>('videoInstantane', () => null)
 const i = projets.findIndex((p) => p.slug === route.params.slug)
 if (i === -1) throw createError({ statusCode: 404, statusMessage: 'Projet introuvable', fatal: true })
 const projet = projets[i]!
-const suivant = projets[(i + 1) % projets.length]!
+// Projet suivant : le prochain dans l'ordre qui n'a pas encore été vu pendant la visite ;
+// null quand tout a été vu (la fin de page affiche alors « Vous avez tout vu »). Avant le
+// montage (rendu serveur), rien n'est connu : c'est simplement le suivant dans l'ordre
+const vus = ref<string[]>([])
+const suivant = computed(() => {
+  for (let k = 1; k < projets.length; k++) {
+    const p = projets[(i + k) % projets.length]!
+    if (!vus.value.includes(p.slug)) return p
+  }
+  return null
+})
+onMounted(() => (vus.value = marquerVu(projet.slug)))
 // Affiche de la vidéo du hero : la capture de l'accueil si on en vient, sinon la photo du projet
 const affiche = instantane.value ?? projet.image
+// Sections listées dans le sommaire flottant (seulement celles que la fiche remplit)
+const sections = [
+  { id: 'intro', titre: 'Le projet' },
+  projet.recit && { id: 'recit', titre: 'Défi & réponse' },
+  projet.visuels?.length && { id: 'visuels', titre: 'Visuels' },
+  projet.identite && { id: 'identite', titre: 'Identité' },
+  projet.temoignage && { id: 'temoignage', titre: 'Témoignage' },
+  { id: 'suite', titre: 'La suite' },
+].filter((s): s is { id: string; titre: string } => !!s)
+// Fiche du projet : lignes renseignées seulement, l'année en dernier
+const fiche = [
+  { nom: 'Client', valeur: projet.fiche?.client },
+  { nom: 'Secteur', valeur: projet.fiche?.secteur },
+  { nom: 'Réalisé', valeur: projet.fiche?.role?.join(', ') },
+  { nom: 'Année', valeur: projet.annee },
+].filter((l): l is { nom: string; valeur: string } => !!l.valeur)
 // La vidéo reste invisible tant qu'elle n'affiche pas la bonne image
 const videoPrete = ref(false)
 
@@ -148,7 +175,7 @@ onMounted(() => {
       },
     )
     $gsap.from('.hero-titre > *', { y: 30, opacity: 0, duration: 0.9, stagger: 0.1, ease: 'power3.out' })
-    $gsap.from('.intro > *, .intro-texte > *', {
+    $gsap.from('.intro > :not(.fiche), .intro-texte > *', {
       y: 30,
       opacity: 0,
       duration: 0.9,
@@ -156,6 +183,22 @@ onMounted(() => {
       ease: 'power3.out',
       scrollTrigger: { trigger: '.intro', start: 'top 85%', once: true },
     })
+    // Fiche, défi & réponse, témoignage : montent à leur arrivée à l'écran
+    for (const [zone, items] of [
+      ['.fiche', '.fiche-ligne'],
+      ['.recit', '.recit-bloc'],
+      ['.temoignage', '.temoignage > *'],
+    ] as const) {
+      if (!root.value!.querySelector(zone)) continue
+      $gsap.from(items, {
+        y: 30,
+        opacity: 0,
+        duration: 0.9,
+        stagger: 0.08,
+        ease: 'power3.out',
+        scrollTrigger: { trigger: zone, start: 'top 85%', once: true },
+      })
+    }
   }, root.value)
 })
 onBeforeUnmount(() => {
@@ -194,7 +237,8 @@ onBeforeUnmount(() => {
       <img v-else-if="projet.image" :src="projet.image" :alt="projet.titre" class="hero-img" />
       <div class="hero-titre">
         <h1>{{ projet.titre }}</h1>
-        <span class="label">{{ projet.tags.join(' · ') }} — {{ projet.annee }}</span>
+        <!-- Savoir-faire et année : déjà dans la fiche sous l'intro ; seulement si elle manque -->
+        <span v-if="!projet.fiche" class="label">{{ projet.tags.join(' · ') }} — {{ projet.annee }}</span>
       </div>
       <template v-if="projet.video">
         <button type="button" class="regarder" aria-label="Regarder la vidéo en plein écran" @click="regarder" />
@@ -218,7 +262,7 @@ onBeforeUnmount(() => {
     />
 
     <!-- Ce qu'est le projet, en deux phrases -->
-    <section class="intro grid">
+    <section id="intro" class="intro grid">
       <h2 class="intro-titre">{{ projet.titre }}</h2>
       <div class="intro-texte">
         <p>{{ projet.description }}</p>
@@ -226,16 +270,49 @@ onBeforeUnmount(() => {
           Voir le site <span class="point" aria-hidden="true" />
         </a>
       </div>
+      <!-- Fiche du projet : une ligne d'informations sous l'intro -->
+      <dl v-if="projet.fiche" class="fiche">
+        <div v-for="l in fiche" :key="l.nom" class="fiche-ligne">
+          <dt class="label">{{ l.nom }}</dt>
+          <dd>{{ l.valeur }}</dd>
+        </div>
+      </dl>
     </section>
 
-    <ProjetVisuels v-if="projet.visuels?.length" :visuels="projet.visuels" />
+    <!-- Le défi du client, et notre réponse -->
+    <section v-if="projet.recit" id="recit" class="recit grid">
+      <div class="recit-bloc">
+        <h2 class="recit-titre">Le défi</h2>
+        <p>{{ projet.recit.defi }}</p>
+      </div>
+      <div class="recit-bloc">
+        <h2 class="recit-titre">Notre réponse</h2>
+        <p>{{ projet.recit.reponse }}</p>
+      </div>
+    </section>
 
-    <ProjetIdentite v-if="projet.identite" :identite="projet.identite" />
+    <ProjetVisuels v-if="projet.visuels?.length" id="visuels" :visuels="projet.visuels" />
+
+    <ProjetIdentite v-if="projet.identite" id="identite" :identite="projet.identite" />
+
+    <!-- Les mots du client, en grand, pour finir la feuille -->
+    <figure v-if="projet.temoignage" id="temoignage" class="temoignage grid">
+      <blockquote class="citation serif">
+        <p>« {{ projet.temoignage.citation }} »</p>
+      </blockquote>
+      <figcaption class="auteur">
+        <span class="auteur-nom">{{ projet.temoignage.auteur }}</span>
+        <span v-if="projet.temoignage.role" class="label">{{ projet.temoignage.role }}</span>
+      </figcaption>
+    </figure>
 
 
   </article>
   <!-- Fin : la feuille remonte et découvre le projet suivant, qu'on ouvre en continuant -->
-  <ProjetSuite :projet="suivant" />
+  <!-- Clé : la fin change de projet (ou passe à « tout vu ») une fois les projets vus connus -->
+  <ProjetSuite id="suite" :key="suivant?.slug ?? 'fin'" :projet="suivant" />
+  <!-- Sommaire flottant : où on en est, et accès direct aux sections -->
+  <ProjetSommaire :sections="sections" />
   </div>
 </template>
 
@@ -434,6 +511,93 @@ onBeforeUnmount(() => {
 }
 
 
+/* Fiche : une ligne sous l'intro, séparée par un trait fin. Même espace entre chaque
+   information quelle que soit sa longueur : la première au bord gauche, la dernière au droit */
+.fiche {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2em 3em;
+  margin: 6vh 0 0;
+  padding-top: 2em;
+  border-top: 1px solid var(--line);
+}
+.fiche-ligne {
+  display: grid;
+  align-content: start;
+  gap: 0.5em;
+}
+.fiche dt {
+  color: var(--muted);
+}
+.fiche dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+/* Défi & réponse : deux colonnes de texte */
+.recit {
+  padding-block: 16vh 4vh;
+  row-gap: 8vh;
+  align-items: start;
+}
+.recit-bloc {
+  grid-column: span 5;
+  display: grid;
+  gap: 1.2em;
+}
+.recit-bloc:last-child {
+  grid-column: 7 / span 5;
+}
+.recit-titre {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.recit-bloc p {
+  margin: 0;
+  max-width: 34em;
+  font-size: max(16px, 1.35vw);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+/* Témoignage : grande citation en italique, l'auteur dessous */
+.temoignage {
+  margin: 0;
+  padding-block: 18vh 12vh;
+  row-gap: 3em;
+}
+.citation {
+  grid-column: 2 / span 10;
+  margin: 0;
+}
+.citation p {
+  margin: 0;
+  font-size: clamp(30px, 3.8vw, 72px);
+  font-style: italic;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.auteur {
+  grid-column: 2 / span 10;
+  display: grid;
+  gap: 0.35em;
+}
+.auteur-nom {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.auteur .label {
+  color: var(--muted);
+}
+
 @media (max-width: 760px) {
   .hero-titre h1 {
     font-size: var(--text-lg);
@@ -441,6 +605,23 @@ onBeforeUnmount(() => {
   .intro-titre,
   .intro-texte {
     grid-column: 1 / -1;
+  }
+  .fiche {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .recit {
+    padding-top: 10vh;
+    row-gap: 6vh;
+  }
+  .recit-bloc,
+  .recit-bloc:last-child,
+  .citation,
+  .auteur {
+    grid-column: 1 / -1;
+  }
+  .temoignage {
+    padding-block: 12vh 8vh;
   }
 }
 </style>
