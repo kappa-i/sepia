@@ -1,35 +1,44 @@
 {
   "$schema": "./_schema.json",
   "ordre": 3,
+  "accueil": true,
   "titre": "Café Noisette",
   "tags": [
     "Identité",
     "Site vitrine"
   ],
   "annee": "2025",
+  "date": "2025-11",
   "description": "Logo, palette et site vitrine pour un torréfacteur de quartier, avec la carte, les horaires et la réservation en deux clics.",
-  "teinte": "#a67b5b",
+  "fiche": {
+    "client": "Café Noisette",
+    "secteur": "Restauration",
+    "role": [
+      "Identité visuelle",
+      "Site vitrine"
+    ]
+  },
+  "recit": {
+    "defi": "Un nouveau café de quartier qui ouvrait dans six semaines, sans nom affiché, sans carte et sans présence en ligne.",
+    "reponse": "Une identité douce et gourmande, prête pour l’enseigne, la carte et les gobelets, puis un site d’une page avec la carte du jour, les horaires et le plan d’accès."
+  },
+  "teinte": "#706c65",
   "image": "hero.jpg",
   "lien": "#",
   "visuels": [
     {
-      "src": "hero.jpg",
-      "alt": "Visuel provisoire",
+      "src": "visuel-1.jpg",
+      "alt": "Cappuccino mousseux",
       "titre": "La carte"
     },
     {
-      "src": "/medias/atelier-brun/hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Réserver une table"
+      "src": "visuel-2.jpg",
+      "alt": "Cafés servis en terrasse",
+      "titre": "Le comptoir"
     },
     {
-      "src": "/medias/maison-ocre/hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Les origines du café"
-    },
-    {
-      "src": "/medias/studio-lin/hero.jpg",
-      "alt": "Visuel provisoire",
+      "src": "visuel-3.jpg",
+      "alt": "Tasse de café noir",
       "titre": "Sachets et étiquettes"
     }
   ],
@@ -76,5 +85,10 @@
         "encre": "#3b2416"
       }
     ]
+  },
+  "temoignage": {
+    "citation": "Tout était prêt pour l’ouverture, de l’enseigne aux gobelets. On n’a eu à s’occuper que du café.",
+    "auteur": "Sofia Rinaldi",
+    "role": "Gérante, Café Noisette"
   }
 }

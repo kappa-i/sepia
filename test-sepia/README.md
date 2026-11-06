@@ -15,7 +15,8 @@ Toutes les pages projet utilisent le même gabarit (`app/pages/projets/[slug].vu
 
 1. **Copier** `app/projets/_modele.json` en `app/projets/<slug>.json`. Le nom du fichier donne l'adresse : `atelier-brun.json` → `/projets/atelier-brun`. Les fichiers qui commencent par `_` sont ignorés.
 2. **Déposer les médias** dans `public/medias/<slug>/` : au minimum `hero.jpg`, et si besoin `hero.mp4` et les visuels.
-3. **Remplir la fiche.** Les médias s'écrivent avec leur seul nom (`"image": "hero.jpg"`). Le projet apparaît tout seul sur l'écran de l'accueil, dans le menu et dans l'enchaînement « projet suivant », à la place donnée par `ordre`.
+3. **Remplir la fiche.** Les médias s'écrivent avec leur seul nom (`"image": "hero.jpg"`). Le projet apparaît tout seul sur la page **Projets** (`/projets`) et dans l'enchaînement « projet suivant », à la place donnée par `ordre`.
+4. **Le mettre sur l'accueil ?** L'écran de l'accueil ne montre que les projets les plus marquants : ceux qui ont `"accueil": true` (4 à 6 conseillés). Les autres restent sur la page Projets. Le modèle est à `false` par défaut.
 
 Dans VS Code, la fiche est reliée à `app/projets/_schema.json` (ligne `"$schema"`). On a l'autocomplétion, la description de chaque champ au survol, et un soulignement rouge si un champ obligatoire manque ou si une couleur est mal écrite. Une fiche incomplète bloque aussi le lancement du site avec un message qui nomme le fichier et les champs manquants.
 
@@ -25,9 +26,11 @@ Exemple minimal :
 {
   "$schema": "./_schema.json",
   "ordre": 5,
+  "accueil": false,
   "titre": "Nom du projet",
   "tags": ["Site vitrine"],
   "annee": "2026",
+  "date": "2026-03",
   "description": "Ce qu’est le projet en deux ou trois phrases.",
   "teinte": "#8a6a4a",
   "image": "hero.jpg"
@@ -39,6 +42,7 @@ Exemple minimal :
 | Section | Champs | Obligatoire |
 |---|---|---|
 | Hero : image en plein écran qui se pose en feuille | `titre`, `tags`, `annee`, `image`, `teinte` | oui |
+| Date précise pour le tri de la page Projets (« 2026-03 » ou « 2026-03-14 ») | `date` | non |
 | Vidéo à la place de l'image, ouvrable en plein écran | `video` | non |
 | Intro : titre et description | `description` | oui |
 | Bouton « Voir le site » | `lien` | non |
@@ -60,6 +64,7 @@ Une section non renseignée disparaît simplement de la page.
 |---|---|
 | `app/projets/*.json` | Une fiche par projet ; `_modele.json` sert de modèle, `_schema.json` décrit les champs |
 | `app/utils/projets.ts` | Chargement et vérification des fiches, types des projets |
+| `app/pages/projets/index.vue` | Page Projets : tous les projets en liste, filtres, aperçu au survol |
 | `app/pages/projets/[slug].vue` | Gabarit de page projet : feuille, hero, intro |
 | `app/components/ProjetLecteur.vue` | Lecteur vidéo plein écran |
 | `app/components/ProjetVisuels.vue` | Couloir de visuels en profondeur |

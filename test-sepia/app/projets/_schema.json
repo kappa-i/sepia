@@ -9,7 +9,11 @@
     "$schema": { "type": "string" },
     "ordre": {
       "type": "number",
-      "description": "Position dans la liste (accueil, menu, projet suivant) : plus petit = avant. Sans ordre, le projet passe après les autres."
+      "description": "Position dans les listes (accueil, page Projets, projet suivant) : plus petit = avant. Sans ordre, le projet passe après les autres."
+    },
+    "accueil": {
+      "type": "boolean",
+      "description": "Mettre le projet en avant sur l'écran de l'accueil (true). Réservé aux plus marquants (4 à 6 conseillés) ; tous les projets restent sur la page Projets."
     },
     "titre": { "type": "string", "minLength": 1, "description": "Nom du projet." },
     "tags": {
@@ -18,7 +22,12 @@
       "minItems": 1,
       "description": "Savoir-faire, ex. [\"Identité\", \"Site vitrine\"]. Affichés sous le titre."
     },
-    "annee": { "type": "string", "pattern": "^[0-9]{4}$", "description": "Année, ex. \"2026\"." },
+    "annee": { "type": "string", "pattern": "^[0-9]{4}$", "description": "Année, ex. \"2026\". C'est elle qui est affichée." },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$",
+      "description": "Facultatif. Date plus précise pour le tri par date de la page Projets : mois \"2026-03\" ou jour \"2026-03-14\". Doit être dans l'année indiquée. Sans date, seule l'année compte."
+    },
     "description": {
       "type": "string",
       "minLength": 1,
@@ -40,6 +49,41 @@
     "lien": {
       "type": "string",
       "description": "Facultatif. Adresse du site réalisé : bouton « Voir le site ». Ex. \"https://exemple.ch\"."
+    },
+    "fiche": {
+      "type": "object",
+      "description": "Facultatif. Fiche du projet sous l'intro (chaque ligne est facultative ; l'année est ajoutée d'office).",
+      "additionalProperties": false,
+      "properties": {
+        "client": { "type": "string", "description": "Nom du client, ex. \"Atelier Brun\"." },
+        "secteur": { "type": "string", "description": "Secteur d'activité, ex. \"Artisanat\"." },
+        "role": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ce que Sepia a fait, ex. [\"Identité\", \"Site e-commerce\"]."
+        }
+      }
+    },
+    "recit": {
+      "type": "object",
+      "description": "Facultatif. Le défi du client et notre réponse, deux ou trois phrases chacun.",
+      "required": ["defi", "reponse"],
+      "additionalProperties": false,
+      "properties": {
+        "defi": { "type": "string", "minLength": 1, "description": "Ce qui coinçait, ce que le client voulait." },
+        "reponse": { "type": "string", "minLength": 1, "description": "Ce qu'on a proposé et pourquoi." }
+      }
+    },
+    "temoignage": {
+      "type": "object",
+      "description": "Facultatif. Citation du client, affichée en grand à la fin de la page.",
+      "required": ["citation", "auteur"],
+      "additionalProperties": false,
+      "properties": {
+        "citation": { "type": "string", "minLength": 1, "description": "Les mots du client, sans guillemets." },
+        "auteur": { "type": "string", "minLength": 1, "description": "Prénom et nom." },
+        "role": { "type": "string", "description": "Fonction, ex. \"Fondatrice, Atelier Brun\"." }
+      }
     },
     "visuels": {
       "type": "array",

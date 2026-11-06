@@ -1,15 +1,16 @@
 <script setup lang="ts">
 const { $gsap } = useNuxtApp()
-const loader = ref<HTMLElement>()
+const voileEl = ref<HTMLElement>()
 const year = new Date().getFullYear()
 const introDone = useState('introDone', () => false)
+// Voile noir du premier chargement. Sur l'accueil, c'est l'écran (ProjectScreen) qui le retire
+// et joue l'intro (la télé s'allume) ; sur les autres pages, il s'efface simplement.
+const voile = useState('introVoile', () => true)
 const route = useRoute()
 // Pages plein écran (ex. accueil) : hauteur de l'écran, pas de scroll, pas de footer
 const fullscreen = computed(() => !!route.meta.fullscreen)
 // Header posé par-dessus le contenu (ex. page projet qui commence par une image plein écran)
 const overlay = computed(() => !!route.meta.overlayHeader)
-// Mots qui défilent sous le logo au chargement ; le dernier reste affiché
-const metiers = ['sites web', 'identité visuelle', 'design & web']
 
 // Menu « écran télé » (voir SiteMenu)
 const menuOuvert = useState('menuOuvert', () => false)
@@ -21,7 +22,10 @@ const surImage = ref(true)
 // Header superposé encore posé sur le hero : l'accroche (« Agence de design & web · Lausanne »)
 // n'est affichée qu'à ce moment-là, elle disparaît une fois le hero dépassé
 const surHero = ref(true)
+// Autres pages : l'accroche disparaît dès qu'on a un peu défilé, et revient tout en haut
+const enHaut = ref(true)
 function majSurImage() {
+  enHaut.value = scrollY < 80
   const milieu = (header.value?.offsetHeight ?? 0) / 2
   surImage.value = [...document.querySelectorAll('main [data-header-clair]')].some((el) => {
     const r = el.getBoundingClientRect()
@@ -31,12 +35,33 @@ function majSurImage() {
   surHero.value = !hero || hero.getBoundingClientRect().bottom > milieu
 }
 watch(() => route.fullPath, () => nextTick(majSurImage))
+// Hauteurs réelles du header et de la ligne du bas de l'accueil (--h-header, --h-bas) :
+// l'écran de l'accueil se centre entre les deux, à égale distance de chacun
+const layoutEl = ref<HTMLElement>()
+const miniFooter = ref<HTMLElement>()
+let mesure: ResizeObserver | undefined
+function mesurer() {
+  const l = layoutEl.value
+  if (!l) return
+  l.style.setProperty('--h-header', `${header.value?.offsetHeight ?? 0}px`)
+  l.style.setProperty('--h-bas', `${miniFooter.value?.offsetHeight ?? 0}px`)
+}
+watch(miniFooter, (el) => {
+  if (el) mesure?.observe(el)
+  mesurer()
+})
+
 onMounted(() => {
+  mesure = new ResizeObserver(mesurer)
+  if (header.value) mesure.observe(header.value)
+  if (miniFooter.value) mesure.observe(miniFooter.value)
+  mesurer()
   majSurImage()
   addEventListener('scroll', majSurImage, { passive: true })
   addEventListener('resize', majSurImage)
 })
 onBeforeUnmount(() => {
+  mesure?.disconnect()
   removeEventListener('scroll', majSurImage)
   removeEventListener('resize', majSurImage)
 })
@@ -48,63 +73,30 @@ useHead({
 })
 
 onMounted(() => {
-  if (!loader.value) return
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    loader.value.remove()
+  // Accueil : déjà retiré par l'écran (monté avant le layout), qui s'occupe de l'intro
+  if (!voile.value) return
+  const fin = () => {
+    voile.value = false
     introDone.value = true
-    return
   }
-  const tl = $gsap.timeline()
-  const boite = document.querySelector<HTMLElement>('.loader-metiers')!
-  const mots = $gsap.utils.toArray<HTMLElement>('.loader-metier')
-  // Le CSS les cache déjà dès le rendu serveur (translateY) : on repasse en yPercent pour GSAP
-  $gsap.set(['.loader-word', '.loader-agence', ...mots], { y: 0, yPercent: 110 })
-
-  // Logo puis « Agence de … »
-  tl.to('.loader-word', { yPercent: 0, duration: 0.6, ease: 'power3.out' })
-    .to('.loader-agence', { yPercent: 0, duration: 0.5, ease: 'power3.out' }, '-=0.35')
-    .set(boite, { width: () => mots[0]!.offsetWidth }, '<')
-
-  // Les métiers défilent dans le même emplacement ; sa largeur suit chaque mot
-  // pour que la ligne « Agence de … » reste centrée
-  mots.forEach((mot, i) => {
-    tl.fromTo(mot, { yPercent: 110 }, { yPercent: 0, duration: 0.35, ease: 'power3.out' }, i ? '>-0.15' : '<')
-    if (i) tl.to(boite, { width: () => mot.offsetWidth, duration: 0.35, ease: 'power3.inOut' }, '<')
-    if (i < mots.length - 1) tl.to(mot, { yPercent: -110, duration: 0.3, ease: 'power3.in' }, '>0.1')
-  })
-
-  tl.to('.loader-word, .loader-ligne', { yPercent: -110, duration: 0.5, ease: 'power3.in', stagger: 0.05, delay: 0.4 })
-    .to(loader.value, {
-      clipPath: 'inset(0 0 100% 0)',
-      duration: 0.8,
-      ease: 'power4.inOut',
-      onComplete: () => loader.value?.remove(),
-    })
-    .call(() => { introDone.value = true }, [], '-=0.5')
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !voileEl.value) return fin()
+  // Autre page : pas d'intro, le noir s'efface
+  introDone.value = true
+  $gsap.to(voileEl.value, { opacity: 0, duration: 0.5, delay: 0.1, ease: 'power2.out', onComplete: fin })
 })
 </script>
 
 <template>
-  <div class="layout" :class="{ fullscreen, 'avec-menu': menuOuvert }">
-    <div ref="loader" class="loader" aria-hidden="true">
-      <div class="loader-inner">
-        <span class="loader-mask"><span class="loader-word">Sepia<sup>©</sup></span></span>
-        <span class="loader-mask loader-sous">
-          <span class="loader-ligne">
-            <span class="loader-agence">Agence de</span>
-            <span class="loader-metiers">
-              <span v-for="m in metiers" :key="m" class="loader-metier serif">{{ m }}</span>
-            </span>
-          </span>
-        </span>
-      </div>
-    </div>
+  <div ref="layoutEl" class="layout" :class="{ fullscreen, 'avec-menu': menuOuvert, intro: !introDone }">
+    <!-- Noir du premier chargement sur les autres pages (voir `voile`). Sur l'accueil, l'écran
+         rend lui-même la pièce noire avec le logo dès le premier affichage -->
+    <div v-if="voile && !fullscreen" ref="voileEl" class="voile" aria-hidden="true" />
 
     <header ref="header" class="header grid" :class="{ overlay, 'sur-image': overlay && (surImage || menuOuvert) }">
       <div class="marque">
         <NuxtLink to="/" class="logo">Sepia<sup>©</sup></NuxtLink>
         <!-- Apparaît en glissant vers le haut une fois l'intro terminée -->
-        <p class="tagline label" :class="{ visible: introDone && (!overlay || surHero) }">
+        <p class="tagline label" :class="{ visible: introDone && (overlay ? surHero : enHaut) }">
           <span class="tagline-mot">{{ accroche }}</span>
           <span v-if="ville" class="tagline-mot">· {{ ville }}</span>
         </p>
@@ -122,30 +114,48 @@ onMounted(() => {
     </header>
     <!-- Hors du header : son mix-blend-mode fausserait les couleurs de l'écran -->
     <SiteMenu />
+    <!-- Extinction de télé entre deux pages (écran « Votre projet » de l'accueil) -->
+    <TeleExtinction />
 
     <main :inert="menuOuvert">
       <slot />
     </main>
 
     <!-- Pages plein écran (accueil) : pas de footer, juste une ligne discrète en bas -->
-    <div v-if="fullscreen" class="mini-footer grid label" :inert="menuOuvert">
-      <span>© {{ year }} Sepia</span>
-      <nav class="footer-links" aria-label="Contact et réseaux">
-        <NuxtLink to="/contact" class="mini-cta">Contact</NuxtLink>
-        <a v-for="r in reseaux" :key="r.nom" :href="r.url" target="_blank" rel="noopener" class="link">{{ r.nom }}</a>
+    <div v-if="fullscreen" ref="miniFooter" class="mini-footer grid label" :inert="menuOuvert">
+      <!-- Même page que « À propos » dans le menu -->
+      <NuxtLink to="/a-propos" class="mini-apropos"><span class="link">À propos de Sepia</span></NuxtLink>
+      <!-- Au centre, seul : l'accueil ne montre que les projets marquants, ici on va à tous les autres -->
+      <NuxtLink to="/projets" class="mini-cta mini-projets">
+        <span class="link">Tous les projets</span><sup class="mini-compte">{{ projets.length }}</sup>
+        <span class="mini-fleche" aria-hidden="true">→</span>
+      </NuxtLink>
+      <!-- Les réseaux sont sur la page Contact -->
+      <nav class="footer-links" aria-label="Contact">
+        <NuxtLink to="/contact" class="mini-cta"><span class="link">Contact</span></NuxtLink>
       </nav>
     </div>
 
+    <!-- Footer des pages intérieures (pas l'accueil, ni les pages projet qui finissent sur
+         « Projet suivant », ni Contact qui a sa propre ligne, identique à celle-ci) -->
     <footer v-if="!fullscreen && !route.meta.sansFooter" class="footer" :inert="menuOuvert">
-      <NuxtLink to="/contact" class="footer-cta">
-        Un projet<span class="serif"> en tête&nbsp;?</span>
-      </NuxtLink>
+      <div class="footer-haut grid">
+        <NuxtLink to="/contact" class="footer-cta">
+          <span class="link">Un projet<span class="serif"> en tête&nbsp;?</span></span>
+        </NuxtLink>
+        <div class="footer-ecrire">
+          <span class="label footer-discret">Écrivez-nous</span>
+          <a :href="`mailto:${email}`" class="link">{{ email }}</a>
+        </div>
+      </div>
+      <!-- Mêmes colonnes que le bas de la page Contact ; les réseaux au milieu -->
       <div class="footer-bottom grid label">
         <span>© {{ year }} Sepia</span>
-        <span class="footer-mid">Sites vitrines · E-commerce · Identité</span>
-        <span class="footer-links">
-          <a href="#" class="link">Mentions légales</a>
+        <span class="footer-mid footer-reseaux">
           <a v-for="r in reseaux" :key="r.nom" :href="r.url" target="_blank" rel="noopener" class="link">{{ r.nom }}</a>
+        </span>
+        <span class="footer-links">
+          <NuxtLink to="/mentions-legales" class="link">Mentions légales</NuxtLink>
         </span>
       </div>
     </footer>
@@ -159,7 +169,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--fg);
+  background: var(--fond-accueil);
 }
 /* Accueil : header transparent posé sur l'ambiance (halo, grain), seuls les liens restent.
    Le mélange « difference » teintait les liens avec le halo : couleur claire simple ici. */
@@ -189,17 +199,33 @@ onMounted(() => {
 .mini-footer > :first-child {
   grid-column: 1 / span 3;
 }
+/* Survol : le trait commun à tous les liens (.link, voir main.css) */
+.mini-apropos {
+  justify-self: start;
+  white-space: nowrap;
+}
 .mini-cta {
   color: var(--bg);
 }
-.mini-footer a {
-  transition: color 0.3s var(--ease);
+/* Contact, à droite : après « Tous les projets » (colonnes 5 à 8), sinon il passe à la ligne */
+.mini-footer .footer-links {
+  grid-column: 9 / -1;
 }
-.mini-footer a:hover {
-  color: var(--bg);
+.mini-projets {
+  grid-column: 5 / span 4;
+  justify-self: center;
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
 }
-.mini-footer .mini-cta:hover {
-  color: var(--accent);
+.mini-compte {
+  margin-left: 0.25em;
+  font-size: 0.75em;
+  vertical-align: super;
+  opacity: 0.55;
+}
+.mini-fleche {
+  margin-left: 0.6em;
 }
 
 /* Menu ouvert : le header (logo, [Off]) reste au-dessus de l'écran télé */
@@ -221,63 +247,20 @@ onMounted(() => {
   color: var(--bg);
 }
 
-.loader {
+.voile {
   position: fixed;
   inset: 0;
   z-index: 100;
-  display: grid;
-  place-items: center;
-  background: var(--fg);
-  color: var(--bg);
-  clip-path: inset(0 0 0 0);
+  background: var(--nuit);
 }
-.loader-mask {
-  overflow: hidden;
-  display: block;
+/* Pendant l'intro, le header et la ligne du bas attendent que la télé ait capté le premier projet */
+.header,
+.mini-footer {
+  transition: opacity 0.8s var(--ease);
 }
-.loader-inner {
-  display: grid;
-  justify-items: center;
-  gap: 0.6em;
-  padding-inline: var(--gutter);
-  text-align: center;
-}
-.loader-word {
-  display: block;
-  font-size: var(--text-lg);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-}
-.loader-sous {
-  font-size: var(--text-md);
-  letter-spacing: -0.02em;
-  color: rgba(237, 234, 226, 0.7);
-}
-.loader-ligne {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.3em;
-}
-.loader-agence {
-  display: block;
-}
-/* Cachés dès le HTML serveur, sinon ils s'affichent avant que GSAP ne démarre */
-.loader-word,
-.loader-agence {
-  transform: translateY(110%);
-}
-/* Tous les métiers dans la même case : un seul visible à la fois */
-.loader-metiers {
-  display: grid;
-  justify-items: start;
-  overflow: hidden;
-  color: var(--bg);
-}
-.loader-metier {
-  grid-area: 1 / 1;
-  white-space: nowrap;
-  transform: translateY(110%);
+.intro .header,
+.intro .mini-footer {
+  opacity: 0;
 }
 
 .header {
@@ -363,46 +346,88 @@ sup {
   margin-top: 20vh;
   background: var(--fg);
   color: var(--bg);
-  padding-top: 10vh;
+  padding-top: 14vh;
+}
+/* L'appel, à taille de titre (plus de lettres géantes), et l'adresse en face */
+.footer-haut {
+  align-items: end;
+  row-gap: 5vh;
 }
 .footer-cta {
-  display: block;
-  padding-inline: var(--gutter);
-  font-size: var(--text-xl);
-  line-height: 0.95;
-  letter-spacing: -0.05em;
+  grid-column: 1 / span 8;
+  justify-self: start;
+  font-size: clamp(40px, 5.2vw, 96px);
+  line-height: 1;
+  letter-spacing: -0.045em;
   font-weight: 500;
-  transition: color 0.4s var(--ease);
 }
-.footer-cta:hover {
-  color: var(--accent);
+.footer-cta .serif {
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
+.footer-ecrire {
+  grid-column: 9 / -1;
+  justify-self: end;
+  display: grid;
+  justify-items: end;
+  gap: 0.5em;
+  font-size: var(--text-sm);
+  letter-spacing: -0.01em;
+}
+.footer-discret {
+  color: rgba(237, 234, 226, 0.55);
+}
+/* Ligne du bas : mêmes colonnes que le bas de la page Contact */
 .footer-bottom {
-  padding-block: 8vh var(--gutter);
-  color: rgba(237, 234, 226, 0.6);
+  margin-top: 14vh;
+  padding-block: var(--gutter);
+  align-items: baseline;
+  border-top: 1px solid rgba(237, 234, 226, 0.12);
+  color: rgba(237, 234, 226, 0.55);
 }
 .footer-bottom > :first-child {
   grid-column: 1 / span 3;
 }
 .footer-mid {
-  grid-column: 4 / span 5;
+  grid-column: 4 / span 4;
+}
+.footer-reseaux {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1.5em;
 }
 .footer-links {
-  grid-column: 9 / -1;
+  grid-column: 8 / -1;
   display: flex;
   justify-content: flex-end;
   gap: 1.5em;
 }
 
 @media (max-width: 760px) {
-  .footer-mid {
-    display: none;
+  .footer-cta {
+    grid-column: 1 / -1;
   }
+  .footer-ecrire {
+    grid-column: 1 / -1;
+    justify-self: start;
+    justify-items: start;
+  }
+  /* Ligne du bas : © et mentions légales, les réseaux en dessous */
+  .footer-reseaux {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 0.8em;
+  }
+  /* Le logo et l'accroche prennent 3 colonnes sur 4 : « Agence de design & web · Lausanne »
+     tient sur une ligne (et passe à la ligne plutôt que d'être coupé sur un très petit écran) */
   .marque {
-    grid-column: 1 / span 2;
+    grid-column: 1 / span 3;
   }
   .menu-btn {
-    grid-column: 3 / -1;
+    grid-column: 4 / -1;
+  }
+  .tagline {
+    flex-wrap: wrap;
   }
   .footer-bottom > :first-child,
   .mini-footer > :first-child {
@@ -412,10 +437,22 @@ sup {
     grid-column: 3 / -1;
     justify-content: flex-end;
   }
+  /* Mobile : pas de place au centre, le lien passe sur sa propre ligne au-dessus */
+  .mini-projets {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: start;
+    margin-bottom: 0.8em;
+  }
   .footer-links {
     grid-column: 1 / -1;
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+  .footer-bottom .footer-links {
+    grid-column: 3 / -1;
+    grid-row: 1;
+    justify-content: flex-end;
   }
 }
 </style>

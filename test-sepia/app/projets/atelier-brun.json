@@ -1,36 +1,50 @@
 {
   "$schema": "./_schema.json",
   "ordre": 1,
+  "accueil": true,
   "titre": "Atelier Brun",
   "tags": [
     "E-commerce"
   ],
   "annee": "2026",
+  "date": "2026-05",
   "description": "Une boutique en ligne sur mesure pour un atelier artisanal : fiches produit soignées, paiement simple et gestion des stocks au quotidien.",
-  "teinte": "#4a3a2c",
+  "fiche": {
+    "client": "Atelier Brun",
+    "secteur": "Artisanat du cuir",
+    "role": [
+      "Site e-commerce",
+      "Photographie produit"
+    ]
+  },
+  "recit": {
+    "defi": "L’atelier vendait surtout sur les marchés et par messages. Les commandes se perdaient, les stocks se tenaient sur un carnet, et rien en ligne ne montrait la qualité du travail.",
+    "reponse": "Une boutique sur mesure, pensée comme la vitrine de l’atelier : des fiches produit qui racontent chaque pièce, un paiement en deux étapes, et un suivi des stocks que l’équipe gère seule au quotidien."
+  },
+  "teinte": "#715e4f",
   "image": "hero.jpg",
   "video": "hero.mp4",
   "lien": "#",
   "visuels": [
     {
-      "src": "/medias/maison-ocre/hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Page d'accueil"
+      "src": "visuel-1.jpg",
+      "alt": "Pièce de cuir sur la planche de découpe",
+      "titre": "La découpe"
     },
     {
-      "src": "/medias/cafe-noisette/hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Fiche produit"
+      "src": "visuel-2.jpg",
+      "alt": "Sacoche en cuir brun",
+      "titre": "Les sacs"
     },
     {
-      "src": "/medias/studio-lin/hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "L'atelier"
+      "src": "visuel-3.jpg",
+      "alt": "Portefeuille en cuir",
+      "titre": "La petite maroquinerie"
     },
     {
-      "src": "hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Commande et livraison"
+      "src": "visuel-4.jpg",
+      "alt": "Carnet couvert de cuir",
+      "titre": "Les carnets"
     }
   ],
   "identite": {
@@ -76,5 +90,10 @@
         "encre": "#22170f"
       }
     ]
+  },
+  "temoignage": {
+    "citation": "On a enfin un site qui ressemble à ce qu’on fabrique. Les commandes arrivent toutes seules, et on passe moins de temps sur l’administratif.",
+    "auteur": "Claire Brun",
+    "role": "Fondatrice, Atelier Brun"
   }
 }

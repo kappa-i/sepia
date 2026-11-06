@@ -10,10 +10,17 @@
  *
  * La section remonte sous la feuille (marge négative) : sa scène, fixée à l'écran, est
  * cachée derrière la feuille puis découverte quand celle-ci s'en va.
+ *
+ * Sans projet (`projet` null : tous ont été vus pendant la visite), l'aperçu est un écran de
+ * neige « Vous avez tout vu » : arrivé au plein écran, la télé s'éteint sur la page Contact
+ * (TeleExtinction, comme l'écran « Votre projet » de l'accueil).
  */
 import type { Projet } from '~/utils/projets'
 
-const props = defineProps<{ projet: Projet }>()
+const props = defineProps<{ projet: Projet | null }>()
+const fin = computed(() => !props.projet)
+const extinctionVers = useState<string | null>('extinctionVers', () => null)
+const neige = ref<HTMLCanvasElement>()
 
 const { $gsap } = useNuxtApp()
 const root = ref<HTMLElement>()
@@ -21,7 +28,7 @@ const cadre = ref<HTMLElement>()
 const video = ref<HTMLVideoElement>()
 const videoTemps = useState<number>('videoTemps', () => 0)
 const instantane = useState<string | null>('videoInstantane', () => null)
-const dest = computed(() => `/projets/${props.projet.slug}`)
+const dest = computed(() => (props.projet ? `/projets/${props.projet.slug}` : '/contact'))
 const statique = ref(false)
 const scene = ref<HTMLElement>()
 const canvas = ref<HTMLCanvasElement>()
@@ -96,7 +103,8 @@ let nettoyerGl: (() => void) | undefined
 /** Met en place le rendu WebGL ; renvoie false si indisponible (l'image HTML reste affichée) */
 function initGl(): boolean {
   const el = canvas.value
-  const source = video.value ?? image.value
+  // Source : la vidéo, l'image, ou la neige (« Vous avez tout vu ») dessinée dans un canvas
+  const source = video.value ?? image.value ?? neige.value
   if (!el || !source || !cadre.value || !scene.value) return false
   const gl = el.getContext('webgl', { premultipliedAlpha: true, alpha: true })
   if (!gl) return false
@@ -131,9 +139,19 @@ function initGl(): boolean {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   const estVideo = source instanceof HTMLVideoElement
+  const estNeige = source instanceof HTMLCanvasElement
+  // Vidéo et neige changent à chaque image : renvoyées au GPU à chaque tour
+  const anime = estVideo || estNeige
+  // Neige : gros pixels nets (pas lissés) une fois agrandie
+  if (estNeige) {
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+  }
   let charge = false
   const envoyer = () => {
-    const pret = estVideo ? source.readyState >= 2 : source.complete && source.naturalWidth > 0
+    const pret = estVideo
+      ? source.readyState >= 2
+      : estNeige || ((source as HTMLImageElement).complete && (source as HTMLImageElement).naturalWidth > 0)
     if (!pret) return
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
     charge = true
@@ -158,15 +176,15 @@ function initGl(): boolean {
   const boucle = (t: number) => {
     raf = requestAnimationFrame(boucle)
     if (!visible || !cadre.value) return
-    if (estVideo || !charge) envoyer()
+    if (anime || !charge) envoyer()
     if (!charge) return
     const c = el.getBoundingClientRect()
     const r = cadre.value.getBoundingClientRect()
     // Avancement de l'agrandissement : 0 au repos, 1 au plein écran → effet de plus en plus léger
     const repos = taille().w
     const p = Math.min(1, Math.max(0, (r.width - repos) / Math.max(1, c.width - repos)))
-    const w = estVideo ? (source as HTMLVideoElement).videoWidth : (source as HTMLImageElement).naturalWidth
-    const h = estVideo ? (source as HTMLVideoElement).videoHeight : (source as HTMLImageElement).naturalHeight
+    const w = estVideo ? source.videoWidth : estNeige ? source.width : (source as HTMLImageElement).naturalWidth
+    const h = estVideo ? source.videoHeight : estNeige ? source.height : (source as HTMLImageElement).naturalHeight
     gl.uniform2f(uImg, w, h)
     gl.uniform2f(uRes, r.width, r.height)
     gl.uniform4f(uRect, (r.left - c.left) / c.width, (c.bottom - r.bottom) / c.height, r.width / c.width, r.height / c.height)
@@ -197,6 +215,13 @@ let arme = false
 function partir() {
   if (parti) return
   parti = true
+  if (fin.value) {
+    // Tour terminé : on repart de zéro, et la télé s'éteint sur la page Contact
+    oublierVus()
+    if (statique.value) return navigateTo(dest.value)
+    extinctionVers.value = dest.value
+    return
+  }
   const v = video.value
   videoTemps.value = v?.currentTime ?? 0
   instantane.value = v ? capturerVideo(v) : null
@@ -227,6 +252,8 @@ onMounted(() => {
     statique.value = true
     return
   }
+  // Tout vu : la neige est dessinée dans un canvas, que le rendu cathodique bombe comme une image
+  if (fin.value) demarrerNeige()
   webgl.value = initGl()
   ctx = $gsap.context(() => {
     // Aperçu : grandit pendant la dernière partie du défilement (une fois la feuille partie)
@@ -268,7 +295,30 @@ onMounted(() => {
 onBeforeUnmount(() => {
   ctx?.revert()
   nettoyerGl?.()
+  cancelAnimationFrame(rafNeige)
 })
+
+// ——— Écran de neige (« Vous avez tout vu ») : grain gris à basse résolution, agrandi ———
+let rafNeige = 0
+function demarrerNeige() {
+  const c = neige.value
+  const g = c?.getContext('2d')
+  if (!c || !g) return
+  c.width = 240
+  c.height = 150
+  const img = g.createImageData(c.width, c.height)
+  const dessiner = () => {
+    const d = img.data
+    for (let k = 0; k < d.length; k += 4) {
+      const v = (Math.random() * 230) | 0
+      d[k] = d[k + 1] = d[k + 2] = v
+      d[k + 3] = 255
+    }
+    g.putImageData(img, 0, 0)
+    rafNeige = requestAnimationFrame(dessiner)
+  }
+  dessiner()
+}
 
 /** Taille de l'aperçu au repos (paysage, ~46 % de la largeur ; plus large sur mobile) */
 function taille() {
@@ -278,14 +328,31 @@ function taille() {
 </script>
 
 <template>
-  <section ref="root" class="suite" :class="{ statique, webgl }" data-header-clair aria-label="Projet suivant">
+  <section
+    ref="root"
+    class="suite"
+    :class="{ statique, webgl, fin }"
+    data-header-clair
+    :aria-label="fin ? 'Vous avez tout vu' : 'Projet suivant'"
+  >
     <div ref="scene" class="scene">
       <!-- Rendu cathodique de l'aperçu, dessiné à l'emplacement du cadre (qui reste cliquable) -->
       <canvas ref="canvas" class="ecran" aria-hidden="true" />
       <div class="bloc">
-        <button ref="cadre" type="button" class="cadre" :aria-label="`Voir le projet ${projet.titre}`" @click="ouvrir">
+        <button
+          ref="cadre"
+          type="button"
+          class="cadre"
+          :aria-label="projet ? `Voir le projet ${projet.titre}` : 'Vous avez tout vu : nous contacter'"
+          @click="ouvrir"
+        >
+          <!-- Tout vu : neige télé, comme l'écran « Votre projet » de l'accueil -->
+          <template v-if="!projet">
+            <canvas ref="neige" class="neige" aria-hidden="true" />
+            <span class="tube" aria-hidden="true" />
+          </template>
           <video
-            v-if="projet.video"
+            v-else-if="projet.video"
             ref="video"
             :src="projet.video"
             :poster="projet.image"
@@ -298,11 +365,17 @@ function taille() {
           <img v-else-if="projet.image" ref="image" :src="projet.image" alt="" />
         </button>
         <div class="infos suite-texte">
-          <span class="titre">{{ projet.titre }}</span>
-          <span class="label">{{ projet.tags.join(' · ') }}</span>
+          <template v-if="projet">
+            <span class="titre">{{ projet.titre }}</span>
+            <span class="label">{{ projet.tags.join(' · ') }}</span>
+          </template>
+          <template v-else>
+            <span class="titre">Vous avez <span class="serif">tout vu</span></span>
+            <span class="label">Parlons maintenant du vôtre</span>
+          </template>
         </div>
       </div>
-      <span class="indice label suite-texte" aria-hidden="true">Continuer pour ouvrir</span>
+      <span class="indice label suite-texte" aria-hidden="true">{{ projet ? 'Continuer pour ouvrir' : 'Continuer vers le contact' }}</span>
     </div>
   </section>
 </template>
@@ -358,7 +431,9 @@ function taille() {
   background: transparent;
 }
 .webgl .cadre video,
-.webgl .cadre img {
+.webgl .cadre img,
+.webgl .cadre .neige,
+.webgl .cadre .tube {
   opacity: 0;
 }
 .cadre video,
@@ -367,6 +442,21 @@ function taille() {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+/* Neige (« Vous avez tout vu ») : grain en gros pixels, lignes de balayage et vignette */
+.neige {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+.tube {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 50% 45%, transparent 45%, rgba(0, 0, 0, 0.6) 100%);
 }
 .cadre:focus-visible {
   outline: 2px solid var(--accent);

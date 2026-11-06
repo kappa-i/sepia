@@ -1,36 +1,45 @@
 {
   "$schema": "./_schema.json",
   "ordre": 1,
+  "accueil": true,
   "titre": "Maison Ocre",
   "tags": [
     "Identité",
     "Site vitrine"
   ],
   "annee": "2026",
+  "date": "2026-02",
   "description": "Une identité chaleureuse et un site vitrine qui met en scène les pièces de la maison, pensé pour donner envie de pousser la porte de la boutique.",
-  "teinte": "#c8955a",
+  "fiche": {
+    "client": "Maison Ocre",
+    "secteur": "Céramique",
+    "role": [
+      "Identité visuelle",
+      "Site vitrine"
+    ]
+  },
+  "recit": {
+    "defi": "Une marque connue de ses clients fidèles, mais sans image commune : un logo dessiné à la main, des couleurs différentes sur chaque support, et un site vieillissant.",
+    "reponse": "Une identité chaleureuse tirée de la terre et de la cuisson, déclinée en un système simple, puis un site vitrine qui met les pièces au premier plan et donne envie de venir à l’atelier."
+  },
+  "teinte": "#71451e",
   "image": "hero.jpg",
   "lien": "#",
   "visuels": [
     {
-      "src": "hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Page d'accueil"
-    },
-    {
-      "src": "/medias/studio-lin/hero.jpg",
-      "alt": "Visuel provisoire",
+      "src": "visuel-1.jpg",
+      "alt": "Pots en terre cuite dans une caisse en bois",
       "titre": "Les pièces de la maison"
     },
     {
-      "src": "/medias/cafe-noisette/hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Carnet d'inspirations"
+      "src": "visuel-2.jpg",
+      "alt": "Tasse en cours de tournage",
+      "titre": "Au tour"
     },
     {
-      "src": "/medias/atelier-brun/hero.jpg",
-      "alt": "Visuel provisoire",
-      "titre": "Venir à la boutique"
+      "src": "visuel-3.jpg",
+      "alt": "Bol façonné à la main",
+      "titre": "Les ateliers"
     }
   ],
   "identite": {
@@ -76,5 +85,10 @@
         "encre": "#5a3420"
       }
     ]
+  },
+  "temoignage": {
+    "citation": "Sepia a compris tout de suite ce qu’on voulait dire sans savoir l’exprimer. Notre identité nous ressemble enfin, et nos clients l’ont remarqué.",
+    "auteur": "Julien Morel",
+    "role": "Cofondateur, Maison Ocre"
   }
 }
