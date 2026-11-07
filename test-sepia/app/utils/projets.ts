@@ -4,7 +4,9 @@
  * Chaque projet est une fiche JSON : app/projets/<slug>.json (copier _modele.json ;
  * le schéma _schema.json donne l'autocomplétion et signale les erreurs dans l'éditeur).
  * Le nom du fichier donne l'adresse (/projets/<slug>). Les images et vidéos vont dans
- * public/medias/<slug>/ et s'écrivent dans la fiche avec leur seul nom (« hero.jpg »).
+ * public/medias/<slug>/ et s'écrivent dans la fiche avec leur seul nom (« hero.jpg »),
+ * ou avec leur chemin complet (« /medias/<slug>/hero.jpg », ce qu'écrit Pages CMS).
+ * Les fiches peuvent aussi être gérées dans Pages CMS (voir .pages.yml à la racine du dépôt).
  * Les projets sont chargés automatiquement, vérifiés, et triés par `ordre`.
  *
  * Une seule page sert de gabarit à tous les projets (pages/projets/[slug].vue) :
@@ -113,6 +115,42 @@ function media(slug: string, chemin?: string) {
   return /^(\/|https?:|#)/.test(chemin) ? chemin : `/medias/${slug}/${chemin}`
 }
 
+/**
+ * Retire les valeurs vides (« », null, [], {}) à tous les niveaux. Pages CMS (voir .pages.yml)
+ * enregistre les champs laissés vides : une fiche éditée là-bas se lit comme une fiche écrite
+ * à la main, où ces champs seraient simplement absents.
+ */
+function nettoyer(v: unknown): unknown {
+  if (typeof v === 'string') return v.trim() ? v : undefined
+  if (v === null) return undefined
+  if (Array.isArray(v)) {
+    const a = v.map(nettoyer).filter((x) => x !== undefined)
+    return a.length ? a : undefined
+  }
+  if (typeof v === 'object') {
+    const o = Object.fromEntries(
+      Object.entries(v as object)
+        .map(([k, x]) => [k, nettoyer(x)])
+        .filter(([, x]) => x !== undefined),
+    )
+    return Object.keys(o).length ? o : undefined
+  }
+  return v
+}
+
+/** Sections facultatives à moitié remplies (ex. dans Pages CMS) : ignorées plutôt qu'affichées incomplètes */
+function sectionsCompletes(f: Record<string, unknown>) {
+  const a = (o: unknown, ...cles: string[]) => !!o && cles.every((c) => (o as Record<string, unknown>)[c] !== undefined)
+  if (!a(f.recit, 'defi', 'reponse')) delete f.recit
+  if (!a(f.temoignage, 'citation', 'auteur')) delete f.temoignage
+  const id = f.identite as Record<string, unknown> | undefined
+  if (!a(id, 'logo', 'couleurs', 'typos') || !a(id!.logo, 'monogramme', 'nom', 'fond', 'encre')) delete f.identite
+  if (Array.isArray(f.visuels)) {
+    f.visuels = f.visuels.filter((v) => a(v, 'src'))
+    if (!(f.visuels as unknown[]).length) delete f.visuels
+  }
+}
+
 /** Vérifie les champs obligatoires ; une fiche incomplète donne une erreur claire au lancement */
 function verifier(slug: string, f: Record<string, unknown>) {
   const manquants = ['titre', 'annee', 'description', 'teinte', 'image'].filter(
@@ -123,8 +161,10 @@ function verifier(slug: string, f: Record<string, unknown>) {
     throw new Error(`Projet « ${slug} » (app/projets/${slug}.json) : champ(s) manquant(s) ou vide(s) : ${manquants.join(', ')}`)
 }
 
-function charger(fichier: string, f: Record<string, unknown>): Projet {
+function charger(fichier: string, brut: Record<string, unknown>): Projet {
   const slug = fichier.split('/').pop()!.replace(/\.json$/, '')
+  const f = (nettoyer(brut) ?? {}) as Record<string, unknown>
+  sectionsCompletes(f)
   verifier(slug, f)
   const p = f as unknown as Omit<Projet, 'slug' | 'ordre' | 'accueil' | 'quand'> & { ordre?: number; accueil?: boolean }
   if (p.date && !p.date.startsWith(p.annee))
