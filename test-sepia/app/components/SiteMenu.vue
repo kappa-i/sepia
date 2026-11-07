@@ -35,6 +35,8 @@ const imageFond = computed(() =>
   chaine.value === 'projets' || chaine.value === null ? projetsAccueil[projetIndex.value]?.image : undefined,
 )
 
+// Mouvement réduit ou mode léger (relu à chaque ouverture : le mode peut changer menu fermé)
+const { reduit: animReduite } = useLeger()
 let reduit = false
 
 // ——— Neige télé : petit canvas basse résolution agrandi en pixels nets ———
@@ -43,19 +45,23 @@ let raf = 0
 let ctx: CanvasRenderingContext2D | null = null
 let img: ImageData | null = null
 
-function dessinerNeige() {
+function peindreNeige() {
   const c = neige.value
-  if (c && ctx && img) {
-    const d = img.data
-    for (let i = 0; i < d.length; i += 4) {
-      const v = (Math.random() * 255) | 0
-      d[i] = d[i + 1] = d[i + 2] = v
-      d[i + 3] = 255
-    }
-    ctx.putImageData(img, 0, 0)
-    c.style.opacity = String(bruit.niveau)
+  if (!c || !ctx || !img) return
+  const d = img.data
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (Math.random() * 255) | 0
+    d[i] = d[i + 1] = d[i + 2] = v
+    d[i + 3] = 255
   }
-  raf = requestAnimationFrame(dessinerNeige)
+  ctx.putImageData(img, 0, 0)
+  c.style.opacity = String(bruit.niveau)
+}
+
+function dessinerNeige() {
+  peindreNeige()
+  // Mouvement réduit / mode léger : une seule image de neige, figée (pas de boucle)
+  raf = reduit ? 0 : requestAnimationFrame(dessinerNeige)
 }
 
 /** Neige de fond selon la chaîne : la chaîne « Contact » n'a pas d'image, elle grésille */
@@ -68,6 +74,7 @@ function zapper(id: string | null) {
   chaine.value = id
   if (reduit) {
     bruit.niveau = niveauRepos()
+    peindreNeige()
     return
   }
   $gsap.killTweensOf(bruit)
@@ -82,6 +89,7 @@ function auFocus(e: FocusEvent, id: string) {
 
 // ——— Allumage / extinction ———
 function allumer() {
+  reduit = animReduite()
   visible.value = true
   chaine.value = chaineDeLaPage()
   nextTick(() => {
@@ -97,7 +105,15 @@ function allumer() {
     root.value?.querySelector<HTMLElement>('.lien')?.focus({ preventScroll: true })
 
     if (reduit) {
+      // Mode léger activé après une fermeture animée : on efface ce qu'elle a laissé
+      // (écran encore surexposé, voile, liens en cours d'apparition)
+      $gsap.killTweensOf([root.value, ecran.value, bruit, voile.value?.el ?? []])
+      extinction?.kill()
+      $gsap.set(ecran.value!, { clearProps: 'transform,filter,opacity' })
+      $gsap.set(contenu.value!.querySelectorAll('.apparait'), { clearProps: 'transform,opacity' })
+      if (voile.value?.el) $gsap.set(voile.value.el, { opacity: 0 })
       bruit.niveau = niveauRepos()
+      peindreNeige()
       $gsap.fromTo(root.value!, { opacity: 0 }, { opacity: 1, duration: 0.2 })
       return
     }
@@ -133,6 +149,7 @@ function allumer() {
 
 let extinction: ReturnType<typeof eteindreTele> | undefined
 function eteindre() {
+  reduit = animReduite()
   const fin = () => {
     visible.value = false
     cancelAnimationFrame(raf)
@@ -164,7 +181,6 @@ function surTouche(e: KeyboardEvent) {
 }
 
 onMounted(() => {
-  reduit = matchMedia('(prefers-reduced-motion: reduce)').matches
   document.addEventListener('keydown', surTouche)
 })
 onBeforeUnmount(() => {
@@ -226,6 +242,10 @@ onBeforeUnmount(() => {
           <div class="bloc">
             <span class="label titre-bloc">Écrire</span>
             <a :href="`mailto:${email}`" class="link">{{ email }}</a>
+          </div>
+          <div class="bloc">
+            <span class="label titre-bloc">Affichage</span>
+            <BoutonLeger />
           </div>
           <div class="bloc bloc-droite">
             <span class="label titre-bloc">Suivre</span>

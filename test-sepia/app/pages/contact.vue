@@ -9,6 +9,8 @@ useSeoMeta({
 })
 
 const { $gsap } = useNuxtApp()
+// Mouvement réduit ou mode léger (voir useLeger) : pas d'animation
+const { reduit } = useLeger()
 const root = ref<HTMLElement>()
 const annee = new Date().getFullYear()
 
@@ -45,7 +47,7 @@ async function copier() {
 
 let ctx: ReturnType<typeof $gsap.context> | undefined
 onMounted(() => {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (reduit()) return
   ctx = $gsap.context(() => {
     // Le titre monte ligne par ligne derrière son masque, puis l'adresse et le reste
     $gsap
@@ -112,6 +114,7 @@ onBeforeUnmount(() => {
     <div class="bas grid label">
       <span>© {{ annee }} Sepia</span>
       <nav class="bas-liens" aria-label="Informations légales">
+        <BoutonLeger />
         <NuxtLink to="/mentions-legales" class="link">Mentions légales</NuxtLink>
       </nav>
     </div>

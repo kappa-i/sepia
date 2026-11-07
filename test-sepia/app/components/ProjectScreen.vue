@@ -271,6 +271,9 @@ let to = 0
 let raf = 0
 let timer: ReturnType<typeof setTimeout> | undefined
 let enTransition = false
+// Mouvement réduit ou mode léger : photos au lieu des vidéos, aucune animation, et l'écran
+// n'est redessiné que quand il change (pas de boucle à 60 images/s sur la carte graphique)
+const { reduit: animReduite } = useLeger()
 let reduit = false
 let ro: ResizeObserver | undefined
 let io: IntersectionObserver | undefined
@@ -314,7 +317,7 @@ async function init() {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([17, 17, 17, 255]))
   noir = { tex: t, w: 1, h: 1 }
   redimensionner()
-  boucle()
+  if (!reduit) boucle()
 
   await document.fonts?.ready
   const sources = await Promise.all(props.items.map(chargerSource))
@@ -333,7 +336,19 @@ async function init() {
   couleurs.value = props.items.map((p, i) => (p.neige ? p.teinte : (couleurMoyenne(sources[i]!.src) ?? p.teinte)))
 
   from = to = Math.min(index.value, textures.length - 1)
+  rafraichir()
   signalerPret()
+}
+
+/** Sans boucle (mouvement réduit / mode léger) : redessine une fois, à l'image suivante */
+function rafraichir() {
+  if (!reduit || raf) return
+  raf = requestAnimationFrame(() => {
+    raf = 0
+    dessiner()
+    refleter()
+    majTraits()
+  })
 }
 
 /**
@@ -348,6 +363,7 @@ function capter() {
   } catch {}
   if (reduit) {
     etat.noise = neigeDe(to)
+    rafraichir()
     planifier()
     return
   }
@@ -481,6 +497,7 @@ function aller(cible: number) {
     from = to
     etat.mix = 0
     etat.noise = neigeDe(to)
+    rafraichir()
     planifier()
     return
   }
@@ -570,6 +587,7 @@ function deplacerCurseur(i: number, anime = true) {
   if (!anime || reduit) {
     curseur.pos = i
     curseur.etire = 0
+    rafraichir()
     return
   }
   // Passage du dernier au premier (ou l'inverse) : pas de grand trajet à travers
@@ -691,6 +709,8 @@ function planifier() {
 }
 
 function surMouvement(e: PointerEvent) {
+  // Écran figé : il ne suit pas la souris
+  if (reduit) return
   const r = canvas.value!.getBoundingClientRect()
   etat.tmx = ((e.clientX - r.left) / r.width - 0.5) * 2
   etat.tmy = -((e.clientY - r.top) / r.height - 0.5) * 2
@@ -701,7 +721,7 @@ function surSortie() {
 }
 
 onMounted(() => {
-  reduit = matchMedia('(prefers-reduced-motion: reduce)').matches
+  reduit = animReduite()
   init()
   window.addEventListener('keydown', surTouche)
   window.addEventListener('wheel', surMolette, { passive: true })
@@ -1161,6 +1181,9 @@ onBeforeUnmount(() => {
   .intro-mot:last-child {
     transform: none;
   }
+}
+:global(html.leger) .intro-mot:last-child {
+  transform: none;
 }
 
 /* Titre : glisse dans le sens du défilement, avec un flou de signal */

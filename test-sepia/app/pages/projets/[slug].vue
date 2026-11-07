@@ -5,6 +5,8 @@ definePageMeta({ overlayHeader: true, sansFooter: true })
 
 const route = useRoute()
 const { $gsap, $ScrollTrigger } = useNuxtApp()
+// Mouvement réduit ou mode léger (voir useLeger) : pas d'animation
+const { leger, reduit } = useLeger()
 const root = ref<HTMLElement>()
 const video = ref<HTMLVideoElement>()
 const videoTemps = useState<number>('videoTemps', () => 0)
@@ -125,7 +127,7 @@ onMounted(() => {
     setTimeout(montrer, 1500) // au pire, on ne la cache pas plus longtemps
   }
   instantane.value = null
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (reduit()) {
     root.value?.querySelector<HTMLElement>('.hero')?.style.setProperty('height', '80svh')
     root.value?.classList.add('posee')
     document.documentElement.style.setProperty('--decalage-header', DECALAGE)
@@ -221,9 +223,10 @@ onBeforeUnmount(() => {
       @pointerleave="survolHero = false"
     >
       <!-- Image de départ (capture de l'accueil) sous la vidéo, le temps qu'elle se cale -->
-      <img v-if="projet.video && affiche" :src="affiche" alt="" class="hero-img hero-affiche" aria-hidden="true" />
+      <img v-if="projet.video && !leger && affiche" :src="affiche" alt="" class="hero-img hero-affiche" aria-hidden="true" />
+      <!-- Mode léger : la photo à la place de la vidéo (« Regarder » reste possible, à la demande) -->
       <video
-        v-if="projet.video"
+        v-if="projet.video && !leger"
         ref="video"
         :src="projet.video"
         class="hero-img hero-video"

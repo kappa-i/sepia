@@ -15,6 +15,8 @@ import type { Visuel } from '~/utils/projets'
 const props = defineProps<{ visuels: Visuel[] }>()
 
 const { $gsap } = useNuxtApp()
+// Mouvement réduit ou mode léger (voir useLeger) : pas d'animation
+const { leger, reduit } = useLeger()
 const root = ref<HTMLElement>()
 const actuel = ref(0)
 const statique = ref(false)
@@ -39,7 +41,7 @@ let ctx: ReturnType<typeof $gsap.context> | undefined
 let deformer: (() => void) | undefined
 const plans = new Map<HTMLElement, PlanCourbe>()
 onMounted(() => {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (reduit()) {
     statique.value = true
     return
   }
@@ -307,8 +309,10 @@ onBeforeUnmount(() => {
         class="visuel"
         :style="{ zIndex: visuels.length - n }"
       >
-        <video v-if="v.video" :src="v.video" :poster="v.src" autoplay muted loop playsinline aria-hidden="true" />
+        <video v-if="v.video && !leger" :src="v.video" :poster="v.src" autoplay muted loop playsinline aria-hidden="true" />
         <img v-else :src="v.src" :alt="v.alt" loading="lazy" />
+        <!-- Sans animation, la légende animée est masquée : chaque visuel garde son titre -->
+        <figcaption v-if="statique && v.titre" class="label legende-statique">{{ v.titre }}</figcaption>
       </figure>
       <!-- Compteur et petit titre du visuel en cours ; le titre change en glissant -->
       <!-- Points (un par visuel, celui en cours s'allonge ; cliquables) et petit titre du visuel
@@ -446,6 +450,23 @@ onBeforeUnmount(() => {
   position: static;
   visibility: visible;
   width: min(80vw, 900px);
+  /* Le titre passe sous l'image : c'est l'image (pas la figure) qui garde le format et l'arrondi */
+  aspect-ratio: auto;
+  overflow: visible;
+  background: none;
+  border-radius: 0;
+}
+.statique .visuel > img,
+.statique .visuel > video {
+  height: auto;
+  aspect-ratio: 16 / 10;
+  border-radius: clamp(10px, 1.1vw, 18px);
+  background: var(--line);
+}
+.legende-statique {
+  display: block;
+  margin-top: 0.9em;
+  opacity: 0.7;
 }
 .points {
   display: flex;

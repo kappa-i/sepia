@@ -2,9 +2,11 @@
 /** Grand titre de page qui monte derrière un masque à l'arrivée (comme Projets et Contact) */
 const root = ref<HTMLElement>()
 const { $gsap } = useNuxtApp()
+// Mouvement réduit ou mode léger (voir useLeger) : pas d'animation
+const { reduit } = useLeger()
 let tw: ReturnType<typeof $gsap.from> | undefined
 onMounted(() => {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (reduit()) return
   tw = $gsap.from(root.value!.querySelector('.titre-masque > span')!, {
     yPercent: 110,
     duration: 1,

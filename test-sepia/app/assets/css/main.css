@@ -145,3 +145,10 @@ a:focus-visible .link::after,
     animation: none !important;
   }
 }
+/* Mode léger (bouton du menu et du footer, voir useLeger) : pareil */
+html.leger *,
+html.leger *::before,
+html.leger *::after {
+  transition: none !important;
+  animation: none !important;
+}
