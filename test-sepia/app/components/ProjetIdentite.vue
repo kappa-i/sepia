@@ -10,6 +10,8 @@ import type { Identite } from '~/utils/projets'
 const props = defineProps<{ identite: Identite }>()
 
 const { $gsap } = useNuxtApp()
+// Mouvement réduit ou mode léger (voir useLeger) : pas d'animation
+const { reduit } = useLeger()
 const root = ref<HTMLElement>()
 const copiee = ref<string | null>(null)
 let minuterie: ReturnType<typeof setTimeout> | undefined
@@ -37,7 +39,7 @@ const ALPHABET = 'Aa Bb Cc Dd Ee Ff Gg Hh Ii Jj Kk 0123456789'
 
 let ctx: ReturnType<typeof $gsap.context> | undefined
 onMounted(() => {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (reduit()) return
   ctx = $gsap.context(() => {
     const tl = $gsap.timeline({ scrollTrigger: { trigger: root.value!, start: 'top 75%', once: true } })
     // Cases : dévoilées de bas en haut, en cascade

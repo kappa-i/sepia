@@ -99,6 +99,8 @@ const apercu = ref<HTMLElement>()
 const ouverture = ref(false)
 // Ligne survolée dans la liste (les autres s'estompent)
 const survol = ref<string | null>(null)
+// Mouvement réduit ou mode léger (voir useLeger)
+const { leger, reduit: animReduite } = useLeger()
 let reduit = false
 
 /**
@@ -151,7 +153,7 @@ onMounted(() => {
   try {
     if (localStorage.getItem(CLE_VUE) === 'liste') vue.value = 'liste'
   } catch {}
-  reduit = matchMedia('(prefers-reduced-motion: reduce)').matches
+  reduit = animReduite()
   if (reduit) return
   // Visuels : cachés jusqu'à leur arrivée à l'écran
   observateur = new IntersectionObserver(
@@ -252,7 +254,7 @@ onBeforeUnmount(() => {
           <NuxtLink :to="`/projets/${p.slug}`" class="carte-lien">
             <span class="visuel" :style="{ background: p.teinte }" aria-hidden="true">
               <video
-                v-if="p.video"
+                v-if="p.video && !leger"
                 :src="p.video"
                 class="visuel-media"
                 muted

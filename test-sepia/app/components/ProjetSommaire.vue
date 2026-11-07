@@ -7,6 +7,8 @@
 const props = defineProps<{ sections: { id: string; titre: string }[] }>()
 
 const { $gsap } = useNuxtApp()
+// Mouvement réduit ou mode léger (voir useLeger) : pas d'animation
+const { reduit } = useLeger()
 const menuOuvert = useState('menuOuvert', () => false)
 
 const ouvert = ref(false)
@@ -43,7 +45,7 @@ function aller(id: string) {
   // Haut de la section en haut de l'écran : le couloir des visuels se cale ainsi sur son
   // premier visuel, et les autres sections ont déjà assez d'air au-dessus pour le header
   const y = Math.max(0, e.getBoundingClientRect().top + scrollY)
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return scrollTo(0, y)
+  if (reduit()) return scrollTo(0, y)
   const proxy = { y: scrollY }
   const distance = Math.abs(y - scrollY)
   tw?.kill()

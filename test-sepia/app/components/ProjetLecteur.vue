@@ -29,6 +29,7 @@ const glisse = ref(false)
 /** 75 → « 1:15 » */
 const minutes = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 let depart: DOMRect | null = null
+const { reduit: animReduite } = useLeger()
 let reduit = false
 
 // ——— Ouverture / fermeture ———
@@ -59,7 +60,7 @@ function calee(v: HTMLVideoElement): Promise<void> {
 
 async function ouvrir(rect: DOMRect, temps = 0, rayon = 0) {
   if (ouvert.value) return
-  reduit = matchMedia('(prefers-reduced-motion: reduce)').matches
+  reduit = animReduite()
   depart = rect
   rayonDepart = rayon
   ouvert.value = true

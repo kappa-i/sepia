@@ -66,20 +66,27 @@ onBeforeUnmount(() => {
   removeEventListener('resize', majSurImage)
 })
 
+// Mode léger (voir useLeger) : classe `leger` sur <html> (animations CSS coupées, voir main.css),
+// et la page est remontée à chaque changement de mode pour repartir proprement
+const { leger, reduit, version, synchroniser } = useLeger()
+
 useHead({
   htmlAttrs: {
-    class: computed(() => [fullscreen.value && 'no-scroll', menuOuvert.value && 'menu-ouvert'].filter(Boolean).join(' ')),
+    class: computed(() =>
+      [fullscreen.value && 'no-scroll', menuOuvert.value && 'menu-ouvert', leger.value && 'leger'].filter(Boolean).join(' '),
+    ),
   },
 })
 
 onMounted(() => {
+  synchroniser()
   // Accueil : déjà retiré par l'écran (monté avant le layout), qui s'occupe de l'intro
   if (!voile.value) return
   const fin = () => {
     voile.value = false
     introDone.value = true
   }
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !voileEl.value) return fin()
+  if (reduit() || !voileEl.value) return fin()
   // Autre page : pas d'intro, le noir s'efface
   introDone.value = true
   $gsap.to(voileEl.value, { opacity: 0, duration: 0.5, delay: 0.1, ease: 'power2.out', onComplete: fin })
@@ -118,7 +125,8 @@ onMounted(() => {
     <TeleExtinction />
 
     <main :inert="menuOuvert">
-      <slot />
+      <!-- Remontée à chaque changement de mode léger ; sans boîte propre (display: contents) -->
+      <div :key="version" class="page-mode"><slot /></div>
     </main>
 
     <!-- Pages plein écran (accueil) : pas de footer, juste une ligne discrète en bas -->
@@ -155,6 +163,7 @@ onMounted(() => {
           <a v-for="r in reseaux" :key="r.nom" :href="r.url" target="_blank" rel="noopener" class="link">{{ r.nom }}</a>
         </span>
         <span class="footer-links">
+          <BoutonLeger />
           <NuxtLink to="/mentions-legales" class="link">Mentions légales</NuxtLink>
         </span>
       </div>
@@ -185,6 +194,9 @@ onMounted(() => {
 .layout.fullscreen main {
   flex: 1;
   min-height: 0;
+}
+.page-mode {
+  display: contents;
 }
 .mini-footer {
   position: absolute;

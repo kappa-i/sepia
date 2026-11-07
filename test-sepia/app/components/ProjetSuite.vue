@@ -23,6 +23,8 @@ const extinctionVers = useState<string | null>('extinctionVers', () => null)
 const neige = ref<HTMLCanvasElement>()
 
 const { $gsap } = useNuxtApp()
+// Mouvement réduit ou mode léger (voir useLeger) : pas d'animation
+const { leger, reduit } = useLeger()
 const root = ref<HTMLElement>()
 const cadre = ref<HTMLElement>()
 const video = ref<HTMLVideoElement>()
@@ -248,8 +250,10 @@ function ouvrir() {
 }
 
 onMounted(() => {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (reduit()) {
     statique.value = true
+    // Tout vu : une seule image de neige, figée (l'écran ne reste pas noir)
+    if (fin.value) nextTick(() => demarrerNeige(false))
     return
   }
   // Tout vu : la neige est dessinée dans un canvas, que le rendu cathodique bombe comme une image
@@ -300,7 +304,7 @@ onBeforeUnmount(() => {
 
 // ——— Écran de neige (« Vous avez tout vu ») : grain gris à basse résolution, agrandi ———
 let rafNeige = 0
-function demarrerNeige() {
+function demarrerNeige(anime = true) {
   const c = neige.value
   const g = c?.getContext('2d')
   if (!c || !g) return
@@ -315,7 +319,7 @@ function demarrerNeige() {
       d[k + 3] = 255
     }
     g.putImageData(img, 0, 0)
-    rafNeige = requestAnimationFrame(dessiner)
+    if (anime) rafNeige = requestAnimationFrame(dessiner)
   }
   dessiner()
 }
@@ -352,7 +356,7 @@ function taille() {
             <span class="tube" aria-hidden="true" />
           </template>
           <video
-            v-else-if="projet.video"
+            v-else-if="projet.video && !leger"
             ref="video"
             :src="projet.video"
             :poster="projet.image"
@@ -375,7 +379,10 @@ function taille() {
           </template>
         </div>
       </div>
-      <span class="indice label suite-texte" aria-hidden="true">{{ projet ? 'Continuer pour ouvrir' : 'Continuer vers le contact' }}</span>
+      <!-- Sans animation (pas d'ouverture au défilement), l'indice dit simplement ce qu'est ce bloc -->
+      <span class="indice label suite-texte" aria-hidden="true">{{
+        statique ? (projet ? 'Projet suivant' : 'Fin de la visite') : projet ? 'Continuer pour ouvrir' : 'Continuer vers le contact'
+      }}</span>
     </div>
   </section>
 </template>
@@ -507,9 +514,20 @@ function taille() {
 .statique .scene {
   position: static;
   height: auto;
+  /* Le titre sous l'aperçu ne doit pas être rogné */
+  overflow: visible;
 }
-.statique .indice,
 .statique .ecran {
   display: none;
+}
+/* Titre et savoir-faire dans le flux, sous l'aperçu (sinon hors de la scène) */
+.statique .infos {
+  position: static;
+}
+/* « Projet suivant », au-dessus de l'aperçu */
+.statique .indice {
+  position: static;
+  order: -1;
+  margin-bottom: 1.5em;
 }
 </style>
