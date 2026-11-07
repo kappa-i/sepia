@@ -109,13 +109,16 @@
         "texte": { "type": "string", "description": "Phrase courte à côté du titre « Identité »." },
         "logo": {
           "type": "object",
-          "required": ["monogramme", "nom", "fond", "encre"],
+          "description": "Le fichier du logo (image), ou à défaut un monogramme en texte.",
+          "required": ["fond"],
+          "anyOf": [{ "required": ["image"] }, { "required": ["monogramme"] }],
           "additionalProperties": false,
           "properties": {
-            "monogramme": { "type": "string", "description": "Initiales affichées en grand, ex. \"AB\"." },
-            "nom": { "type": "string", "description": "Nom sous le monogramme." },
+            "image": { "type": "string", "description": "Fichier du logo, SVG ou PNG transparent (ex. \"logo.svg\"). Remplace le monogramme." },
+            "monogramme": { "type": "string", "description": "Sans fichier : initiales affichées en grand, ex. \"AB\"." },
+            "nom": { "type": "string", "description": "Nom du logo (sous le monogramme, ou texte alternatif de l'image)." },
             "fond": { "$ref": "#/definitions/couleur", "description": "Couleur de la case." },
-            "encre": { "$ref": "#/definitions/couleur", "description": "Couleur du texte." }
+            "encre": { "$ref": "#/definitions/couleur", "description": "Couleur du monogramme. Par défaut, clair ou sombre selon le fond." }
           }
         },
         "couleurs": {
@@ -138,13 +141,17 @@
           "description": "Typographies (2 conseillées).",
           "items": {
             "type": "object",
-            "required": ["nom", "famille", "usage", "fond", "encre"],
+            "required": ["nom", "usage", "fond", "encre"],
             "additionalProperties": false,
             "properties": {
-              "nom": { "type": "string", "description": "Nom affiché, ex. \"Chillax\"." },
+              "nom": { "type": "string", "description": "Nom affiché, ex. \"Reverso\"." },
+              "fichier": {
+                "type": "string",
+                "description": "Fichier de la police (woff2 conseillé, ou woff, ttf, otf), ex. \"reverso.woff2\" : le spécimen s'affiche dans cette police."
+              },
               "famille": {
                 "type": "string",
-                "description": "Police CSS : \"var(--font-sans)\" (Chillax), \"var(--font-serif)\" (Instrument Serif) ou une famille chargée sur le site."
+                "description": "Sans fichier : police CSS, ex. \"var(--font-sans)\" (Chillax) ou \"var(--font-serif)\" (Instrument Serif). Par défaut, celle du site."
               },
               "usage": { "type": "string", "description": "Ex. \"Titres, interface\"." },
               "serif": { "type": "boolean", "description": "true pour une police serif (italique, graisse normale)." },

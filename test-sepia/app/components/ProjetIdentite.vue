@@ -37,6 +37,32 @@ async function copier(hex: string) {
 // Extrait d'alphabet pour les spécimens
 const ALPHABET = 'Aa Bb Cc Dd Ee Ff Gg Hh Ii Jj Kk 0123456789'
 
+// Typos du projet : une police fournie en fichier est chargée sur la page (@font-face) ;
+// sinon la famille indiquée, sinon celle du site. Repli : sans ou serif du site.
+const FORMATS: Record<string, string> = { woff2: 'woff2', woff: 'woff', ttf: 'truetype', otf: 'opentype' }
+const typos = computed(() =>
+  props.identite.typos.map((t, i) => {
+    const repli = t.serif ? 'var(--font-serif)' : 'var(--font-sans)'
+    if (!t.fichier) return { ...t, css: t.famille ?? repli, face: '' }
+    // Nom propre au fichier : deux projets ne se marchent pas dessus
+    const nom = `typo-${i}-${[...t.fichier].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36)}`
+    const ext = t.fichier.split('.').pop()!.toLowerCase()
+    const format = FORMATS[ext] ? ` format('${FORMATS[ext]}')` : ''
+    return {
+      ...t,
+      // Nom sans guillemets (identifiant CSS valide) : rien à échapper dans l'attribut style
+      css: `${nom}, ${repli}`,
+      face: `@font-face{font-family:'${nom}';src:url('${t.fichier}')${format};font-display:swap}`,
+    }
+  }),
+)
+useHead({
+  style: computed(() => {
+    const faces = typos.value.map((t) => t.face).join('')
+    return faces ? [{ key: 'typos-projet', innerHTML: faces }] : []
+  }),
+})
+
 let ctx: ReturnType<typeof $gsap.context> | undefined
 onMounted(() => {
   if (reduit()) return
@@ -49,7 +75,7 @@ onMounted(() => {
       { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.1, ease: 'power4.out', stagger: 0.1, clearProps: 'clipPath' },
     )
       // Logo : arrive en grandissant légèrement
-      .from('.logo-mono', { scale: 0.8, opacity: 0, duration: 1, ease: 'power3.out' }, 0.3)
+      .from('.logo-mono, .logo-img', { scale: 0.8, opacity: 0, duration: 1, ease: 'power3.out' }, 0.3)
       // Mire : les barres tombent une à une, puis la bande en damier
       .from('.barre', { scaleY: 0, duration: 0.9, ease: 'expo.out', stagger: 0.07 }, 0.25)
       .from('.damier', { scaleX: 0, duration: 0.8, ease: 'expo.out' }, 0.6)
@@ -71,9 +97,18 @@ onBeforeUnmount(() => {
     </header>
 
     <!-- Logo -->
-    <div class="case logo" :style="{ background: identite.logo.fond, color: identite.logo.encre }">
-      <span class="logo-mono serif">{{ identite.logo.monogramme }}</span>
-      <span class="logo-nom">{{ identite.logo.nom }}</span>
+    <div class="case logo" :style="{ background: identite.logo.fond, color: identite.logo.encre ?? encre(identite.logo.fond) }">
+      <!-- Fichier du logo (SVG, PNG) ; sinon monogramme et nom en texte -->
+      <img
+        v-if="identite.logo.image"
+        :src="identite.logo.image"
+        :alt="identite.logo.nom ? `Logo ${identite.logo.nom}` : 'Logo'"
+        class="logo-img"
+      />
+      <template v-else>
+        <span class="logo-mono serif">{{ identite.logo.monogramme }}</span>
+        <span v-if="identite.logo.nom" class="logo-nom">{{ identite.logo.nom }}</span>
+      </template>
       <span class="label coin">Logo</span>
     </div>
 
@@ -98,18 +133,18 @@ onBeforeUnmount(() => {
 
     <!-- Typographies -->
     <div
-      v-for="(t, i) in identite.typos"
+      v-for="(t, i) in typos"
       :key="t.nom"
       class="case typo"
       :class="i % 2 ? 'droite' : 'gauche'"
       :style="{ background: t.fond, color: t.encre }"
     >
-      <span class="specimen" :class="{ serif: t.serif }" :style="{ fontFamily: t.famille }">Aa</span>
+      <span class="specimen" :class="{ serif: t.serif }" :style="{ fontFamily: t.css }">Aa</span>
       <div class="typo-infos">
         <span class="typo-nom">{{ t.nom }}</span>
         <span class="label">{{ t.usage }}</span>
       </div>
-      <span class="alphabet" :class="{ serif: t.serif }" :style="{ fontFamily: t.famille }">{{ ALPHABET }}</span>
+      <span class="alphabet" :class="{ serif: t.serif }" :style="{ fontFamily: t.css }">{{ ALPHABET }}</span>
     </div>
   </section>
 </template>
@@ -170,6 +205,12 @@ onBeforeUnmount(() => {
   font-size: max(90px, 14vw);
   line-height: 0.8;
   letter-spacing: -0.04em;
+}
+/* Fichier du logo : centré, sans déborder de la case */
+.logo-img {
+  width: min(60%, 560px);
+  max-height: 55%;
+  object-fit: contain;
 }
 .logo-nom {
   font-size: var(--text-md);

@@ -15,7 +15,7 @@ media:
     output: /medias
     # Noms de fichiers sans espaces ni accents
     rename: safe
-    extensions: [jpg, jpeg, png, webp, avif, gif, svg, mp4, webm]
+    extensions: [jpg, jpeg, png, webp, avif, gif, svg, mp4, webm, woff2, woff, ttf, otf]
 
 content:
   - name: projets
@@ -103,7 +103,7 @@ content:
       - name: lien
         label: Lien du site
         type: string
-        description: Facultatif. Adresse du site réalisé (bouton « Voir le site »), ex. https://exemple.ch.
+        description: Facultatif. Adresse du site réalisé (bouton « Voir le site »), ex. exemple.ch — https:// est ajouté s'il manque.
       - name: visuels
         label: Visuels
         type: object
@@ -181,25 +181,36 @@ content:
           - name: logo
             label: Logo
             type: object
+            description: Le fichier du logo, posé sur la couleur de fond. Sans fichier, un monogramme en texte.
             fields:
-              - name: monogramme
-                label: Monogramme
-                type: string
-                description: Initiales affichées en grand, ex. AB.
-              - name: nom
-                label: Nom
-                type: string
+              - name: image
+                label: Fichier du logo
+                type: image
+                description: SVG ou PNG transparent.
+                options:
+                  media: medias
+                  extensions: [svg, png, webp]
               - name: fond
                 label: Couleur du fond
                 type: string
+                description: Couleur de la case du logo.
                 pattern:
                   regex: "^#[0-9a-fA-F]{6}$"
                   message: Couleur au format #rrggbb.
-              - name: encre
-                label: Couleur du texte
+              - name: nom
+                label: Nom
                 type: string
+                description: Nom de la marque (sous le monogramme, ou lu par les lecteurs d'écran pour l'image).
+              - name: monogramme
+                label: Monogramme (sans fichier)
+                type: string
+                description: Seulement s'il n'y a pas de fichier — initiales affichées en grand, ex. AB.
+              - name: encre
+                label: Couleur du monogramme (sans fichier)
+                type: string
+                description: Facultatif. Par défaut, clair ou sombre selon le fond.
                 pattern:
-                  regex: "^#[0-9a-fA-F]{6}$"
+                  regex: "^$|^#[0-9a-fA-F]{6}$"
                   message: Couleur au format #rrggbb.
           - name: couleurs
             label: Palette
@@ -236,20 +247,18 @@ content:
                 label: Nom affiché
                 type: string
                 required: true
-              - name: famille
-                label: Police
-                type: select
-                required: true
+              - name: fichier
+                label: Fichier de la police
+                type: file
+                description: woff2 conseillé (ou woff, ttf, otf). Le spécimen « Aa » s'affiche dans cette police. Vide = police du site.
                 options:
-                  values:
-                    - name: var(--font-sans)
-                      label: Chillax (sans serif)
-                    - name: var(--font-serif)
-                      label: Instrument Serif
+                  media: medias
+                  extensions: [woff2, woff, ttf, otf]
               - name: serif
-                label: Serif (italique)
+                label: Police serif
                 type: boolean
                 default: false
+                description: Spécimen en italique ; sans fichier, prend la serif du site (Instrument Serif) au lieu de la sans (Chillax).
               - name: usage
                 label: Usage
                 type: string
