@@ -1,0 +1,290 @@
+# Pages CMS (https://pagescms.org) : interface pour gérer les projets du portfolio.
+# Chaque projet est une fiche JSON dans test-sepia/app/projets/ (le nom du fichier donne
+# l'adresse /projets/<nom>). Calqué sur test-sepia/app/projets/_schema.json : un champ
+# ajouté au schéma doit l'être ici aussi.
+
+settings:
+  content:
+    # Garde ce que l'interface ne connaît pas (ex. la ligne "$schema" en tête des fiches)
+    merge: true
+
+media:
+  - name: medias
+    label: Médias
+    input: test-sepia/public/medias
+    output: /medias
+    # Noms de fichiers sans espaces ni accents
+    rename: safe
+    extensions: [jpg, jpeg, png, webp, avif, gif, svg, mp4, webm]
+
+content:
+  - name: projets
+    label: Projets
+    type: collection
+    path: test-sepia/app/projets
+    format: json
+    # Modèle et schéma : pas des projets
+    exclude: [_modele.json, _schema.json]
+    # Nouveau projet : le fichier prend le nom du titre (« Atelier Brun » → atelier-brun.json)
+    filename: "{primary}.json"
+    view:
+      primary: titre
+      fields: [titre, annee, accueil, ordre]
+      sort: [ordre, titre, annee]
+      default:
+        sort: ordre
+        order: asc
+    fields:
+      # ——— Essentiel ———
+      - name: titre
+        label: Titre
+        type: string
+        required: true
+        description: Nom du projet.
+      - name: tags
+        label: Savoir-faire
+        type: string
+        list: true
+        required: true
+        description: Ex. « Identité », « Site vitrine ». Affichés sous le titre et utilisés comme filtres sur la page Projets.
+      - name: annee
+        label: Année
+        type: string
+        required: true
+        pattern:
+          regex: "^[0-9]{4}$"
+          message: Quatre chiffres, ex. 2026.
+      - name: date
+        label: Date précise
+        type: string
+        description: Facultatif, pour le tri par date de la page Projets. Mois « 2026-03 » ou jour « 2026-03-14 », dans l'année indiquée.
+        pattern:
+          regex: "^$|^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$"
+          message: Format « 2026-03 » ou « 2026-03-14 ».
+      - name: description
+        label: Description
+        type: text
+        required: true
+        description: Ce qu'est le projet, en deux ou trois phrases (intro de la page).
+      - name: ordre
+        label: Ordre
+        type: number
+        description: Position dans les listes (accueil, page Projets, projet suivant) — plus petit = avant. Vide = après les autres.
+      - name: accueil
+        label: Sur l'accueil
+        type: boolean
+        default: false
+        description: Mettre le projet sur l'écran de l'accueil (4 à 6 conseillés).
+
+      # ——— Médias ———
+      - name: image
+        label: Image principale
+        type: image
+        required: true
+        description: Paysage ~1920 px. Accueil, haut de page, menu, projet suivant — et photo du mode léger quand il y a une vidéo. Ranger dans medias/<nom-du-projet>/.
+        options:
+          media: medias
+          extensions: [jpg, jpeg, png, webp, avif]
+      - name: teinte
+        label: Teinte
+        type: string
+        required: true
+        description: Couleur proche de la dominante de l'image, affichée le temps qu'elle charge. Ex. #a8542a.
+        pattern:
+          regex: "^#[0-9a-fA-F]{6}$"
+          message: Couleur au format #rrggbb.
+      - name: video
+        label: Vidéo
+        type: file
+        description: Facultatif. Vidéo muette en boucle à la place de l'image (mp4), ouvrable en plein écran.
+        options:
+          media: medias
+          extensions: [mp4, webm]
+      - name: lien
+        label: Lien du site
+        type: string
+        description: Facultatif. Adresse du site réalisé (bouton « Voir le site »), ex. https://exemple.ch.
+      - name: visuels
+        label: Visuels
+        type: object
+        description: Facultatif. Couloir de visuels (3 à 6 conseillés), recadrés en paysage 16:10.
+        list:
+          max: 8
+          collapsible:
+            collapsed: true
+            summary: "{titre}"
+        fields:
+          - name: src
+            label: Image
+            type: image
+            required: true
+            description: ~1600 px de large (ou affiche de la vidéo).
+            options:
+              media: medias
+              extensions: [jpg, jpeg, png, webp, avif]
+          - name: alt
+            label: Description de l'image
+            type: string
+            description: Pour les lecteurs d'écran. Vide si purement décorative.
+          - name: titre
+            label: Petit titre
+            type: string
+            description: Affiché sous le visuel, ex. « La découpe ».
+          - name: video
+            label: Vidéo
+            type: file
+            description: Facultatif. Vidéo muette en boucle à la place de l'image.
+            options:
+              media: medias
+              extensions: [mp4, webm]
+
+      # ——— Fiche et récit ———
+      - name: fiche
+        label: Fiche du projet
+        type: object
+        description: Facultatif. Sous l'intro ; chaque ligne est facultative (l'année est ajoutée d'office).
+        fields:
+          - name: client
+            label: Client
+            type: string
+          - name: secteur
+            label: Secteur
+            type: string
+          - name: role
+            label: Réalisé
+            type: string
+            list: true
+            description: Ce que Sepia a fait, ex. « Identité », « Site e-commerce ».
+      - name: recit
+        label: Défi & réponse
+        type: object
+        description: Facultatif. Affiché seulement si les deux textes sont remplis.
+        fields:
+          - name: defi
+            label: Le défi
+            type: text
+            description: Ce qui coinçait, ce que le client voulait.
+          - name: reponse
+            label: Notre réponse
+            type: text
+            description: Ce qu'on a proposé et pourquoi.
+
+      # ——— Identité ———
+      - name: identite
+        label: Identité visuelle
+        type: object
+        description: Facultatif. Planche logo, palette et typographies ; affichée seulement si logo, couleurs et typos sont remplis.
+        fields:
+          - name: texte
+            label: Phrase d'intro
+            type: string
+          - name: logo
+            label: Logo
+            type: object
+            fields:
+              - name: monogramme
+                label: Monogramme
+                type: string
+                description: Initiales affichées en grand, ex. AB.
+              - name: nom
+                label: Nom
+                type: string
+              - name: fond
+                label: Couleur du fond
+                type: string
+                pattern:
+                  regex: "^#[0-9a-fA-F]{6}$"
+                  message: Couleur au format #rrggbb.
+              - name: encre
+                label: Couleur du texte
+                type: string
+                pattern:
+                  regex: "^#[0-9a-fA-F]{6}$"
+                  message: Couleur au format #rrggbb.
+          - name: couleurs
+            label: Palette
+            type: object
+            description: Une barre de la mire par couleur (4 conseillées).
+            list:
+              max: 8
+              collapsible:
+                collapsed: true
+                summary: "{nom} {hex}"
+            fields:
+              - name: nom
+                label: Nom
+                type: string
+                required: true
+              - name: hex
+                label: Couleur
+                type: string
+                required: true
+                pattern:
+                  regex: "^#[0-9a-fA-F]{6}$"
+                  message: Couleur au format #rrggbb.
+          - name: typos
+            label: Typographies
+            type: object
+            description: 2 conseillées.
+            list:
+              max: 4
+              collapsible:
+                collapsed: true
+                summary: "{nom}"
+            fields:
+              - name: nom
+                label: Nom affiché
+                type: string
+                required: true
+              - name: famille
+                label: Police
+                type: select
+                required: true
+                options:
+                  values:
+                    - name: var(--font-sans)
+                      label: Chillax (sans serif)
+                    - name: var(--font-serif)
+                      label: Instrument Serif
+              - name: serif
+                label: Serif (italique)
+                type: boolean
+                default: false
+              - name: usage
+                label: Usage
+                type: string
+                required: true
+                description: Ex. « Titres, interface ».
+              - name: fond
+                label: Couleur du fond
+                type: string
+                required: true
+                pattern:
+                  regex: "^#[0-9a-fA-F]{6}$"
+                  message: Couleur au format #rrggbb.
+              - name: encre
+                label: Couleur du texte
+                type: string
+                required: true
+                pattern:
+                  regex: "^#[0-9a-fA-F]{6}$"
+                  message: Couleur au format #rrggbb.
+
+      # ——— Témoignage ———
+      - name: temoignage
+        label: Témoignage
+        type: object
+        description: Facultatif. Citation du client en grand à la fin de la page ; affichée si citation et auteur sont remplis.
+        fields:
+          - name: citation
+            label: Citation
+            type: text
+            description: Les mots du client, sans guillemets.
+          - name: auteur
+            label: Auteur
+            type: string
+            description: Prénom et nom.
+          - name: role
+            label: Fonction
+            type: string
+            description: Ex. « Fondatrice, Atelier Brun ».
