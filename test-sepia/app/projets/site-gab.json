@@ -1,0 +1,74 @@
+{
+  "titre": "Site Gab",
+  "tags": [
+    "Site test"
+  ],
+  "annee": "2026",
+  "date": "2026-11",
+  "description": "Ce site permet de voir si pages cms fonctionne correctement hiihihihi",
+  "ordre": 1,
+  "accueil": false,
+  "image": "/medias/442481.jpg",
+  "teinte": "#FBBC05",
+  "lien": "gabrielcappai.ch",
+  "visuels": [
+    {
+      "src": "/medias/584604-batmobile-the.jpg",
+      "alt": "Batman",
+      "titre": "Voiture Batman"
+    }
+  ],
+  "fiche": {
+    "client": "C'était pour moi ",
+    "secteur": "Agriculture",
+    "role": [
+      "la plantation, le caca"
+    ]
+  },
+  "recit": {
+    "defi": "Il était difficile pour eux de faire genre que c'était un bon projet",
+    "reponse": "On leur a dit en face que ça puait la merde"
+  },
+  "identite": {
+    "texte": "Identité visuelle de batman était pensée pour faire peur",
+    "logo": {
+      "monogramme": "AB",
+      "nom": "Batman",
+      "fond": "#34A853",
+      "encre": "#34A853"
+    },
+    "couleurs": [
+      {
+        "nom": "Rouge perle",
+        "hex": "#EA4335"
+      },
+      {
+        "nom": "Bleu azzure",
+        "hex": "#2643C7"
+      },
+      {
+        "nom": "Rose ",
+        "hex": "#FC8EAC"
+      },
+      {
+        "nom": "Jaune",
+        "hex": "#EEAD0E"
+      }
+    ],
+    "typos": [
+      {
+        "nom": "Reverso",
+        "famille": "var(--font-serif)",
+        "serif": false,
+        "usage": "Titres",
+        "fond": "#ff9933",
+        "encre": "#ffffff"
+      }
+    ]
+  },
+  "temoignage": {
+    "citation": "Le site était trop beau j'ai kiffé",
+    "auteur": "Moi",
+    "role": "Sénateur"
+  }
+}
