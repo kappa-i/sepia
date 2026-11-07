@@ -77,12 +77,29 @@ export interface Visuel {
 export interface Identite {
   /** Phrase courte à côté du titre « Identité » */
   texte?: string
-  /** Case du logo : monogramme en grand, nom en dessous, sur la couleur `fond` */
-  logo: { monogramme: string; nom: string; fond: string; encre: string }
+  /**
+   * Case du logo sur la couleur `fond` : le fichier du logo (`image`, SVG ou PNG) s'il y en a un,
+   * sinon un monogramme en grand avec le nom en dessous, à la couleur `encre`
+   */
+  logo: { image?: string; monogramme?: string; nom?: string; fond: string; encre?: string }
   /** Palette : une barre de la mire par couleur (4 conseillées) */
   couleurs: { nom: string; hex: string }[]
-  /** Typographies (2 conseillées) : famille CSS, usage, couleurs de la case */
-  typos: { nom: string; famille: string; usage: string; serif?: boolean; fond: string; encre: string }[]
+  /** Typographies (2 conseillées) : nom, usage, couleurs de la case, et la police elle-même */
+  typos: Typo[]
+}
+
+export interface Typo {
+  /** Nom affiché, ex. « Reverso » */
+  nom: string
+  usage: string
+  fond: string
+  encre: string
+  /** Police serif : spécimen en italique, graisse normale ; sert aussi au repli si la police manque */
+  serif?: boolean
+  /** Fichier de la police (woff2, woff, ttf, otf) : chargé sur la page pour le spécimen */
+  fichier?: string
+  /** Sans fichier : famille CSS (ex. « var(--font-serif) ») ; par défaut, celle du site (sans ou serif) */
+  famille?: string
 }
 
 /**
@@ -144,7 +161,10 @@ function sectionsCompletes(f: Record<string, unknown>) {
   if (!a(f.recit, 'defi', 'reponse')) delete f.recit
   if (!a(f.temoignage, 'citation', 'auteur')) delete f.temoignage
   const id = f.identite as Record<string, unknown> | undefined
-  if (!a(id, 'logo', 'couleurs', 'typos') || !a(id!.logo, 'monogramme', 'nom', 'fond', 'encre')) delete f.identite
+  // Logo : une couleur de fond, et le fichier du logo ou un monogramme
+  const logo = id?.logo as Record<string, unknown> | undefined
+  if (!a(id, 'logo', 'couleurs', 'typos') || !a(logo, 'fond') || !(logo!.image || logo!.monogramme)) delete f.identite
+  else id!.typos = (id!.typos as unknown[]).filter((t) => a(t, 'nom', 'usage', 'fond', 'encre'))
   if (Array.isArray(f.visuels)) {
     f.visuels = f.visuels.filter((v) => a(v, 'src'))
     if (!(f.visuels as unknown[]).length) delete f.visuels
@@ -177,8 +197,20 @@ function charger(fichier: string, brut: Record<string, unknown>): Projet {
     accueil: p.accueil ?? false,
     image: media(slug, p.image),
     video: media(slug, p.video),
+    lien: lienExterne(p.lien),
     visuels: p.visuels?.map((v) => ({ ...v, alt: v.alt ?? '', src: media(slug, v.src), video: media(slug, v.video) })),
+    identite: p.identite && {
+      ...p.identite,
+      logo: { ...p.identite.logo, image: media(slug, p.identite.logo.image) },
+      typos: p.identite.typos.map((t) => ({ ...t, fichier: media(slug, t.fichier) })),
+    },
   }
+}
+
+/** « exemple.ch » → « https://exemple.ch » : sans protocole, le lien partirait vers une page du site */
+function lienExterne(lien?: string) {
+  if (!lien) return lien
+  return /^([a-z][a-z0-9+.-]*:|\/|#)/i.test(lien) ? lien : `https://${lien.replace(/^\/+/, '')}`
 }
 
 export const projets: Projet[] = Object.entries(fiches)
