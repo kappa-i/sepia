@@ -7,5 +7,6 @@
   "description": "C la maison de GIGI",
   "accueil": false,
   "image": "/medias/d05a0a03-13c1-4042-929e-8aa619345ac6.jpeg",
-  "teinte": "#A52A2A"
+  "teinte": "#A52A2A",
+  "ordre": 1
 }
