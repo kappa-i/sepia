@@ -377,11 +377,16 @@ function taille() {
             <span class="titre">Vous avez <span class="serif">tout vu</span></span>
             <span class="label">Parlons maintenant du vôtre</span>
           </template>
+          <!-- Sous les savoir-faire (et non en bas de l'écran) : sur une fenêtre basse, ils ne se
+               chevauchent plus -->
+          <span v-if="!statique" class="label indice" aria-hidden="true">{{
+            projet ? 'Continuer pour ouvrir' : 'Continuer vers le contact'
+          }}</span>
         </div>
       </div>
-      <!-- Sans animation (pas d'ouverture au défilement), l'indice dit simplement ce qu'est ce bloc -->
-      <span class="indice label suite-texte" aria-hidden="true">{{
-        statique ? (projet ? 'Projet suivant' : 'Fin de la visite') : projet ? 'Continuer pour ouvrir' : 'Continuer vers le contact'
+      <!-- Sans animation (pas d'ouverture au défilement) : dit simplement ce qu'est ce bloc -->
+      <span v-if="statique" class="label entete suite-texte" aria-hidden="true">{{
+        projet ? 'Projet suivant' : 'Fin de la visite'
       }}</span>
     </div>
   </section>
@@ -491,13 +496,9 @@ function taille() {
 .infos .label {
   opacity: 0.6;
 }
-.indice {
-  position: absolute;
-  bottom: var(--gutter);
-  left: 0;
-  right: 0;
-  text-align: center;
-  opacity: 0.5;
+.infos .indice {
+  margin-top: 1.4em;
+  opacity: 0.4;
 }
 @media (max-width: 760px) {
   .cadre {
@@ -525,9 +526,9 @@ function taille() {
   position: static;
 }
 /* « Projet suivant », au-dessus de l'aperçu */
-.statique .indice {
-  position: static;
+.entete {
   order: -1;
   margin-bottom: 1.5em;
+  opacity: 0.5;
 }
 </style>
